@@ -1,0 +1,356 @@
+---
+title: "National Cancer Patient Experience Survey (Analysis)"
+output: html_notebook
+---
+
+In this notebook I demonstrate how our algorithm can be useful to analyze complex and large datasets such as the National Cancer Patient Experience survey (NCPES). The steps where I load, reshape and cluster the raw data can be found in the ncpes_data_preparation notebook.
+
+```{r setup}
+library(tidyverse)
+library(mixdir)
+library(cowplot)
+```
+
+
+
+
+
+
+# Load data
+
+```{r}
+if(file.exists("../data/ncpes_data/UKDA-8163-tab")){
+  print("Data available, reproduce everything")
+  # Load the data
+  cpes <- read_delim("../data/ncpes_data/UKDA-8163-tab/tab/cpes_2015_eul_file_21-02-2017-datav3.tab", 
+                     "\t", escape_double = FALSE, trim_ws = TRUE)
+  
+  # Remove all Score columns and other questions that are problematic
+  X <- cpes %>%
+    dplyr::select(- contains("Score"), -DateReceived, -Sample_LengthOfStay, - matches("^Q5[a-z]$"),
+           - matches("^Q25[a-z]$"), -Q59, -Q64, -IMD_Quintile, - ICD10BasedCancerType, -Ethnicity) %>%
+    as.matrix() %>%
+  apply(2, as.character)
+}else{
+  stop(paste0("Due to data privacy we cannot share this dataset. Please get if from ",
+             "here (https://discover.ukdataservice.ac.uk/Catalogue/?sn=8163&type=Data%20catalogue) to fully reproduce the analysis"))
+  
+}
+```
+
+```{r}
+survey_annotation <- read_tsv("../data/ncpes_clustering_results/parsed_questionaire.tsv") 
+```
+
+Changing alphas
+
+```{r}
+alphas <-rep(c(1, 10, 100, 500, 1000, 1e4, 1e5), each=5)
+cluster_list <- read_rds("../data/ncpes_clustering_results/ncpes_dp_alphas_list3.RDS")
+```
+
+
+Changing K
+
+```{r}
+ks <- rep(c(5,10, 15, 20, 25, 30, 40, 5, 50, 100, 200), each=5)
+cluster_list_dir <- c(read_rds("../data/ncpes_clustering_results/ncpes_dir_ks_list2.RDS"),
+                      read_rds("../data/ncpes_clustering_results/ncpes_dir_ks_list.RDS"))
+cluster_list_dp <- c(read_rds("../data/ncpes_clustering_results/ncpes_dp_ks_list2.RDS"),
+                     read_rds("../data/ncpes_clustering_results/ncpes_dp_ks_list.RDS"))
+
+dir_ari_data <- data_frame(id=1:length(cluster_list_dir),
+           run=c(rep(1, 7 * 5), rep(2, 4 * 5)),
+           k=ks,
+           k_inf=map_dbl(cluster_list_dir, ~ length(unique(.x$pred_class))),
+           cluster_assig=map(cluster_list_dir, ~ .x$pred_class)) %>%
+  filter(! (run == 2 && k == 5)) %>%
+  dplyr::select(- run) %>%
+  group_by(k) %>%
+  summarize(ari=list(c(
+    mcclust::arandi(cluster_assig[[1]], cluster_assig[[2]]),
+    mcclust::arandi(cluster_assig[[1]], cluster_assig[[3]]),
+    mcclust::arandi(cluster_assig[[1]], cluster_assig[[4]]),
+    mcclust::arandi(cluster_assig[[1]], cluster_assig[[5]]),
+    mcclust::arandi(cluster_assig[[2]], cluster_assig[[3]]),
+    mcclust::arandi(cluster_assig[[2]], cluster_assig[[4]]),
+    mcclust::arandi(cluster_assig[[2]], cluster_assig[[5]]),
+    mcclust::arandi(cluster_assig[[3]], cluster_assig[[4]]),
+    mcclust::arandi(cluster_assig[[3]], cluster_assig[[5]]),
+    mcclust::arandi(cluster_assig[[4]], cluster_assig[[5]])
+  ))) %>%
+  unnest() 
+
+dp_ari_data <- data_frame(id=1:length(cluster_list_dp),
+           run=c(rep(1, 7 * 5), rep(2, 4 * 5)),
+           k=ks,
+           k_inf=map_dbl(cluster_list_dp, ~ length(unique(.x$pred_class))),
+           cluster_assig=map(cluster_list_dp, ~ .x$pred_class)) %>%
+  filter(! (run == 2 && k == 5)) %>%
+  dplyr::select(- run) %>%
+  group_by(k) %>%
+  summarize(ari=list(c(
+    mcclust::arandi(cluster_assig[[1]], cluster_assig[[2]]),
+    mcclust::arandi(cluster_assig[[1]], cluster_assig[[3]]),
+    mcclust::arandi(cluster_assig[[1]], cluster_assig[[4]]),
+    mcclust::arandi(cluster_assig[[1]], cluster_assig[[5]]),
+    mcclust::arandi(cluster_assig[[2]], cluster_assig[[3]]),
+    mcclust::arandi(cluster_assig[[2]], cluster_assig[[4]]),
+    mcclust::arandi(cluster_assig[[2]], cluster_assig[[5]]),
+    mcclust::arandi(cluster_assig[[3]], cluster_assig[[4]]),
+    mcclust::arandi(cluster_assig[[3]], cluster_assig[[5]]),
+    mcclust::arandi(cluster_assig[[4]], cluster_assig[[5]])
+  ))) %>%
+  unnest()
+
+
+```
+
+
+
+# Increase K effect
+
+Alluvial
+```{r}
+
+# par(
+#   oma=c(2, 3, 2, 3)
+# )
+{par(xpd = NA, # switch off clipping, necessary to always see axis labels
+    bg = "white", # switch off background to avoid obscuring adjacent plots
+    oma=c(2, 1, 2, 1) # Set the margins 
+) 
+purrr::map2_df(cluster_list, alphas, ~ data_frame(class=.x$pred_class, alpha=.y, 
+                                                  individual=1:length(.x$pred_class),
+                                                  converged=.x$converged,
+                                                  ELBO= .x$convergence %>% tail(n=1))) %>%
+    group_by(alpha) %>%
+    filter(ELBO == max(ELBO)) %>%
+    ungroup() %>%
+    filter(alpha == 10 | alpha == 100 | alpha == 1e3 | alpha == 1e4 | alpha == 1e5) %>%
+    dplyr::select(- ELBO) %>%
+    mutate(alpha = factor(alpha, levels=unique(alphas), ordered=TRUE),
+           class = as.factor(class)) %>%
+    filter(converged) %>%
+    dplyr::select(- converged) %>%
+    group_by(alpha) %>%
+    mutate(class = forcats::fct_lump(LETTERS[class], n=7)) %>%
+    ungroup() %>%
+    spread(alpha, class) %>%
+    group_by_at(vars(matches("\\d+"))) %>%
+    summarize(freq=n()) %>%
+    {alluvial::alluvial(.[, 1:(ncol(.)-1)], freq=.$freq, 
+                        hide=.$freq < 50, blocks=TRUE, gap.width = 0.2, alpha=0.8,
+                        axis_labels = paste0("α\u2081=", c(10, 100, 1e3, 1e4, 1e5)))}
+alluvial_plot <- recordPlot()}
+# dev.copy(png, "../output/ncpes_alluvial_alpha1.png", width=4500, height=2100, res=300)
+# dev.off()
+```
+
+Beeswarm
+
+```{r fig.height=4.5, fig.width=7}
+
+p1 <- rbind(mutate(dir_ari_data,
+       origin="Dir"),
+      mutate(dp_ari_data,
+       origin="DP")) %>%
+  ggplot(aes(x=k, y=ari)) +
+    ggbeeswarm::geom_quasirandom() +
+    geom_smooth(se=TRUE, method="glm", method.args=list(family=inverse.gaussian(link = "1/mu^2"))) +
+    facet_wrap(~ origin) +
+    xlab(expression(K[max])) +
+    ylab("ARI")
+
+p2 <- rbind(data_frame(id=1:length(cluster_list_dir),
+           run=c(rep(1, 7 * 5), rep(2, 4 * 5)),
+           k=ks,
+           k_inf=map_dbl(cluster_list_dir, ~ length(unique(.x$pred_class))),
+           origin="Dir") %>%
+      filter(! (run == 2 && k == 5)),
+  data_frame(id=1:length(cluster_list_dp),
+           run=c(rep(1, 7 * 5), rep(2, 4 * 5)),
+           k=ks,
+           k_inf=map_dbl(cluster_list_dp, ~ length(unique(.x$pred_class))),
+           origin="DP") %>%
+      filter(! (run == 2 && k == 5))) %>%
+  ggplot(aes(x=k, y=k_inf)) +
+    ggbeeswarm::geom_quasirandom() +
+    geom_smooth(se=TRUE, method="lm") +
+    facet_wrap(~ origin) +
+    xlab(expression(K[max])) +
+    ylab(expression(K[realized]))
+
+
+upper_half <- plot_grid(p2, p1, align="vh", nrow=2, labels=c("A", "B"))
+lower_half <- plot_grid(alluvial_plot, labels="C")
+comb_plot <- plot_grid(upper_half, lower_half, ncol=1, rel_heights = c(4,3))
+comb_plot
+ggsave("../output/ncpes_challenge.png", comb_plot, width=7, height=9)
+
+```
+
+
+
+# Optimism trend
+
+
+
+```{r}
+cluster_list <- c(read_rds("../data/ncpes_clustering_results/ncpes_dir_ks_list2.RDS")[1:5],
+                  read_rds("../data/ncpes_clustering_results/ncpes_dir_ks_list.RDS")[1:5])
+clustering <- cluster_list[[which.max(map_dbl(cluster_list, ~.x$ELBO))]]
+
+data_frame(OverallRating=cpes$Q59,
+           class=as.factor(clustering$pred_class)) %>%
+  mutate(class = c("E", "B", "D", "C", "A")[class]) %>%
+  filter(OverallRating != 98) %>%
+  ggplot(aes(x=class, y=OverallRating)) + 
+    geom_violin()
+
+data_frame(OverallRating=cpes$Q59,
+           class=as.factor(clustering$pred_class)) %>%
+  mutate(class = c("E", "B", "D", "C", "A")[class]) %>%
+  filter(OverallRating != 98) %>%
+  {
+    print(wilcox.test(.$OverallRating[.$class == "A"], .$OverallRating[.$class == "B"], correct=TRUE, alternative="greater"))
+    print(wilcox.test(.$OverallRating[.$class == "B"], .$OverallRating[.$class == "C"], correct=TRUE, alternative="greater"))
+    print(wilcox.test(.$OverallRating[.$class == "C"], .$OverallRating[.$class == "D"], correct=TRUE, alternative="greater"))
+    print(wilcox.test(.$OverallRating[.$class == "D"], .$OverallRating[.$class == "E"], correct=TRUE, alternative="greater"))
+  }
+```
+
+
+# Plot defininig features
+
+```{r}
+set.seed(1)
+import_vars <- lapply(1:5, function(iter){
+  mixdir::find_defining_features(clustering, X, subsample_size=1000, step_size=10,exponential_decay = TRUE, measure = "JS", verbose=TRUE)
+})
+
+quests <- map_df(import_vars, ~ data_frame(var=.x$features, score=1:length(.x$features))) %>%
+  group_by(var) %>%
+  summarize(score=sum(score)) %>%
+  arrange(score) %>%
+  pull(var) %>%
+  head(n=5)
+
+categories <- lapply(clustering$category_prob, function(x) names(x[[1]]))
+```
+
+
+```{r fig.height=4.5, fig.width=9}
+p1 <- data_frame(q=head(quests, n=8)) %>%
+  mutate(answer=categories[head(quests, n=8)]) %>%
+  unnest() %>%
+  left_join(find_typical_features(clustering, top_n = Inf), by=c("q"="column", "answer"="answer")) %>%
+  mutate(answer=as.numeric(answer)) %>%
+  left_join(survey_annotation, by=c("q"="var", "answer"="response_id")) %>%
+  mutate(class_l = paste0(c("E", "B", "D", "C", "A"), " (n=", round(nrow(X) * clustering$lambda), ")")[class]) %>%
+  mutate(response_short=case_when(
+    response == "Yes" ~ "Definetly / Yes",
+    response == "No, but I would have liked a discussion or information" ~ "No / Never",
+    response == "It was not necessary / relevant to me" ~ "Don't know / Unnecessary",
+    response == "Don’t know / can’t remember" ~ "Don't know / Unnecessary",
+    response == "Yes, definitely" ~ "Definetly / Yes",
+    response == "Yes, to some extent" ~ "Some extent / Sometimes",
+    response == "No" ~ "No / Never",
+    response == "Yes" ~ "Definetly / Yes",
+    response == "I had no worries or fears" ~ "No worries",
+    response == "I did not have any worries or fears" ~ "No worries",
+    response == "No, I was not offered any practical advice or support" ~ "No / Never",
+    response == "No, future side effects were not explained" ~ "No / Never",
+    response == "No, but I would have liked information" ~ "Wanted info",
+    response == "I did not need an explanation" ~ "Don't know / Unnecessary",
+    response == "No family or friends were involved" ~ "No family involved",
+    response == "I did not want my family or friends to be involved" ~ "Didn't want family",
+    response == "My family or friends did not want or need information" ~ "Family didn't want",
+    response == "It was not necessary" ~ "Unnecessary",
+    response == "Yes, always" ~ "Definetly / Yes",
+    response == "Yes, some of the time" ~ "Some extent / Sometimes",
+    response == "Yes, most of the time" ~ "Most often",
+    response == "No, never" ~ "No / Never",
+    TRUE ~ response
+  )) %>%
+  mutate(short_response = factor(response_short, levels=c("Definetly / Yes", "No / Never", " ",
+                                 "Most often", "Some extent / Sometimes", 
+                                 "Don't know / Unnecessary",
+                                 "",
+                                 "Didn't want family", "Family didn't want", "No family involved"), ordered=TRUE)) %>%
+  ggplot(aes(x=q, y=short_response, fill=as.factor(class), width=sqrt(probability), height=sqrt(probability))) +
+    geom_tile() +
+    geom_hline(yintercept=c(3, 7)) +
+    xlab("") + scale_y_discrete("", drop=FALSE) +
+    coord_fixed() +
+    facet_wrap( ~ class_l, nrow=1) +
+    coord_fixed(ratio=6/5) +
+    scale_fill_brewer(type="qual", palette=3)  + guides(fill=FALSE) +
+    theme(axis.text.x = element_text(angle=90, vjust=0.5))
+
+
+q21_text <- "Q21: Did hospital staff discuss with you or give you information about the impact cancer could have on your day to day activities?"
+q49_text <- "Q49: Did the doctors or nurses give your family or someone close to you all the information they needed to help care for you at home?"
+q54_text <- "Q54: Did the different people treating and caring for you work well together to give you the best possible care?"
+q15_text <- "Q15: Before you started your treatment(s), were you also told about any side effects of the treatment that could affect you in the future?"
+q14_text <- "Q14: Were you offered practical advice and support in dealing with the side effects of your treatment(s)?"
+p1 %>%
+  add_sub(q14_text, x=-0.2, hjust = 0, size=8, vpadding = grid::unit(0.3, "lines")) %>%
+  add_sub(q15_text, x=-0.2, hjust = 0, size=8, vpadding = grid::unit(0.3, "lines")) %>%
+  add_sub(q21_text, x=-0.2, hjust = 0, size=8, vpadding = grid::unit(0.3, "lines")) %>%
+  add_sub(q49_text, x=-0.2, hjust = 0, size=8, vpadding = grid::unit(0.3, "lines")) %>%
+  add_sub(q54_text, x=-0.2, hjust = 0, size=8, vpadding = grid::unit(0.3, "lines")) %>%
+  ggdraw()
+
+ggsave("../output/ncpes_answer_cluster_overview.png", width=9, height=4.5)
+``` 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

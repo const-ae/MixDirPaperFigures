@@ -1,0 +1,199 @@
+---
+title: "Clustering Performance on Synthetic Data"
+output: html_notebook
+---
+
+In this notebook I first generate a dataset with a known ground truth and use that to evaluate the performance and runtime
+of 5 different clustering algorithm for categorical data:
+
+1. ROCK as implemented in the cba package
+2. k-mode as implemented in the klar package
+3. EM for latent class model as implemented in the poLCA package
+4. mixdir with a Dirichlet prior from our new mixdir package
+5. mixdir with a Dirichlet Process prior from our new mixdir package
+
+
+```{r setup}
+library(tidyverse)
+library(mixdir)
+library(poLCA)
+library(cba)
+library(cowplot)
+```
+
+
+
+```{r}
+
+generate_categorical_dataset <- function(n_ind, n_quest, n_cat, n_true_classes, lambda_true=1/n_true_classes,
+                                         bb_size=100, bb_suc=0.05, bb_overdis=10){
+  
+  if(length(n_cat) > 1 && length(n_cat) != n_quest) stop("n_cat must either be length or match the n_quest")
+  if(length(n_cat) == 1){
+    n_cat <- rep(n_cat, times=n_quest)
+  }
+  
+  # First step generate true class representives
+  U_true <- lapply(1:n_quest, function(j)lapply(1:n_true_classes, function(k) rep(NA, n_cat[j]) ))
+  for(k in 1:n_true_classes){
+    for(j in 1:n_quest){
+      U_true[[j]][[k]] <- rmutil::rbetabinom(n_cat[j], size = bb_size, m=bb_suc, s=bb_overdis) + 1
+    }
+  }
+  
+  if(length(lambda_true) == 1) {
+    lambda_true <- rep(lambda_true, n_true_classes)
+  }
+  true_latent <- sample(1:n_true_classes, n_ind, replace=TRUE, prob=lambda_true) 
+  
+  
+  data <- matrix(NA, ncol=n_quest, nrow=n_ind)
+  for(i in 1:n_ind){
+    for(j in 1:n_quest){
+      data[i, j] <- which(extraDistr::rdirmnom(1, 1, alpha=U_true[[j]][[true_latent[i]]]) == 1)
+    }
+  }
+  
+  list(X=data, true_latent=true_latent, U_true=U_true)
+
+}
+
+test_cluster_perf <- function(n_iter, n_latent){
+  set.seed(1)
+  bind_rows(lapply(1:n_iter, function(idx){
+    
+    tmp <- generate_categorical_dataset(n_ind=1000, n_quest=5, n_cat=rbinom(1, 30, 0.3), n_true_classes = 4, 
+                                        lambda_true=extraDistr::rdirichlet(1, rep(1,4)),
+                                        bb_size=100, bb_suc=rbeta(1, 0.5, 10), bb_overdis=max(0.1, rnorm(1, 10, 5)))
+    X <- tmp$X
+    true_classes <- tmp$true_latent
+    
+    t_md <- system.time(mixdir_result <- mixdir(X, n_latent=n_latent, select_latent = FALSE, alpha=1, beta = 0.1))
+    t_dp <- system.time(mixdirdp_result <- mixdir(X, n_latent=n_latent, select_latent = TRUE, alpha=c(1,1), beta = 0.1))
+    t_km <- system.time(kmode_result <- klaR::kmodes(X,n_latent))
+    t_ro <- system.time(rock_result <- fitted(rockCluster(as.dummy(X), n=n_latent, theta = 0.5, debug=FALSE)))
+    t_po <- system.time(lca_result <- poLCA(formula(paste0("cbind(", paste0(paste0("V", 1:ncol(X)), collapse = ","), ") ~ 1")),
+                                           as.data.frame(X), nclass=n_latent, verbose = FALSE))
+    
+    annotation <- data.frame(Group= as.factor(true_classes))
+    clustering_matrix <-rbind(kmode_result$cluster,
+                              mixdir_result$pred_class,
+                              mixdirdp_result$pred_class,
+                              lca_result$predclass, as.numeric(rock_result$cl),
+                              rep(1, length(true_classes)),
+                              true_classes)
+    
+    arand_idx <- clustering_matrix %>%
+      apply(1, function(row) mcclust::arandi(true_classes, row))
+    
+    tribble(   ~method,       ~time,
+             "k_mode",    t_km["user.self"],
+             "mixdir",  t_md["user.self"],
+             "middir_dp",  t_dp["user.self"],
+             "poLCA",      t_po["user.self"],
+             "rock",       t_ro["user.self"],
+             "all_one",    0,
+             "correct",    0) %>%
+      mutate(arand_idx=arand_idx,
+             iteration=idx)
+    
+  }))
+}
+
+```
+
+```{r}
+set.seed(1)
+data <- test_cluster_perf(n_latent=4, n_iter=100)
+data2 <- test_cluster_perf(n_latent=8, n_iter=100)
+```
+
+
+```{r}
+write_rds(list(data=data, data2=data2), "../data/synthetic_clustering_results/data_k_4_vs_8_niter100.RDS")
+```
+
+```{r}
+data <- read_rds("../data/synthetic_clustering_results/data_k_4_vs_8_niter100.RDS")$data
+data2 <- read_rds("../data/synthetic_clustering_results/data_k_4_vs_8_niter100.RDS")$data2
+```
+
+
+
+```{r}
+
+
+p1 <- data %>%
+  dplyr::select(-time) %>%
+  filter(method != "correct" & method != "all_one") %>%
+  mutate(method= forcats::fct_reorder(as.factor(method), - arand_idx, mean)) %>%
+  ggplot(aes(x=method, y=arand_idx)) +
+    ggbeeswarm::geom_quasirandom(width = 0.2) +
+    stat_summary(fun.data = "mean_cl_boot", colour = "red", geom = "crossbar", size=0.2, width=0.5) +
+    ggsignif::geom_signif(comparisons = list(c("middir_dp", "mixdir"), 
+                                             c("middir_dp", "poLCA"), c("k_mode", "rock"), c("mixdir", "k_mode")),
+                          y_position =  c(1.16, 1.1, 0.8, 1.0), test.args=list(paired=TRUE), map_signif_level = TRUE, 
+                          textsize = 4) +
+    theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5)) +
+    scale_y_continuous("ARI", breaks=c(0,0.25, 0.5, 0.75, 1), limits = c(NA, 1.3)) +
+    scale_x_discrete("", labels=c(k_mode="k-mode", middir_dp="mixdir DP", mixdir="mixdir", poLCA="poLCA", rock="ROCK")) +
+    ggtitle("True Classes = 4 and K=4")
+
+p2 <- data2 %>%
+  dplyr::select(-time) %>%
+  filter(method != "correct" & method != "all_one") %>%
+  mutate(method= forcats::fct_reorder(as.factor(method), - arand_idx, mean)) %>%
+  ggplot(aes(x=method, y=arand_idx)) +
+    ggbeeswarm::geom_quasirandom(width = 0.2) +
+    stat_summary(fun.data = "mean_cl_boot", colour = "red", geom = "crossbar", size=0.2, width=0.5) +
+    ggsignif::geom_signif(comparisons = list(c("poLCA", "k_mode"), c("middir_dp", "mixdir"), 
+                                             c("mixdir", "poLCA"), c("k_mode", "rock")),
+                          y_position = c(0.9, 0.9, 1.0, 0.8), test.args=list(paired=TRUE), map_signif_level = TRUE, 
+                          textsize = 4) +
+    theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5)) +
+    scale_y_continuous("ARI", breaks=c(0,0.25, 0.5, 0.75, 1), limits = c(NA, 1.3)) +
+    scale_x_discrete("", labels=c(k_mode="k-mode", middir_dp="mixdir DP", mixdir="mixdir", poLCA="poLCA", rock="ROCK")) +
+    ggtitle("True Classes = 4 and K=8")
+
+p_comb <- cowplot::plot_grid(p1, p2, align = "v", labels=c("A", "B"))
+p_comb
+cowplot::ggsave("../output/performance_comparison.png", p_comb, width=7, height=4.5)
+```
+
+
+
+```{r}
+
+p1 <- data %>%
+  dplyr::select(-arand_idx) %>%
+  filter(method != "correct" & method != "all_one") %>%
+  mutate(method= forcats::fct_reorder(as.factor(method), time, mean)) %>%
+  ggplot(aes(x=method, y=time)) +
+    stat_summary(fun.data = "mean_cl_boot", colour = "red", geom = "crossbar", size=0.2, width=0.5) +
+    ggbeeswarm::geom_quasirandom(width = 0.2) +
+    theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5)) +
+    scale_x_discrete("", labels=c(k_mode="k-mode", middir_dp="mixdir DP", mixdir="mixdir", poLCA="poLCA", rock="ROCK")) +
+    ylab("Time [seconds]") +
+    ggtitle("True Classes = 4 and K=4")
+
+p2 <- data2 %>%
+  dplyr::select(-arand_idx) %>%
+  filter(method != "correct" & method != "all_one") %>%
+  mutate(method= forcats::fct_reorder(as.factor(method), time, mean)) %>%
+  ggplot(aes(x=method, y=time)) +
+    stat_summary(fun.data = "mean_cl_boot", colour = "red", geom = "crossbar", size=0.2, width=0.5) +
+    ggbeeswarm::geom_quasirandom(width = 0.2) +
+    theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5)) +
+    # scale_y_continuous("ARI", breaks=c(0,0.25, 0.5, 0.75, 1), limits = c(NA, 1.5)) +
+    scale_x_discrete("", labels=c(k_mode="k-mode", middir_dp="mixdir DP", mixdir="mixdir", poLCA="poLCA", rock="ROCK")) +
+    ylab("Time [seconds]") +
+    ggtitle("True Classes = 4 and K=8")
+
+p_comb <- cowplot::plot_grid(p1, p2, align = "v", labels=c("A", "B"))
+p_comb
+cowplot::ggsave("../output/performance_comparison_timing.png", p_comb, width=7, height=4.5)
+```
+
+
+
+

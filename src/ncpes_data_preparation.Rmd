@@ -1,0 +1,165 @@
+---
+title: "National Cancer Patient Experience Survey (Preparation)"
+output: html_notebook
+---
+
+In this notebook I load the National Cancer Patient Experience Survey (NCPES) dataset and cluster it using different 
+hyperparameters. Note that due to privacy reasons we cannot publicly share the raw data, so you would need to apply
+for access yourself [here](https://discover.ukdataservice.ac.uk/Catalogue/?sn=8163&type=Data%20catalogue) to reproduce
+the data preparation and clustering results. But due to their aggregated form we can share the results from the clustering 
+algorithms (`data/ncpes_clustering_results`), so you can reproduce the subsequent analysis in the `ncpes_analysis.RMD` notebook.
+
+```{r setup}
+library(tidyverse)
+library(stringr)
+library(purrr)
+library(mixdir)
+library(parallel)
+```
+
+
+```{r}
+if(file.exists("../data/ncpes_data/UKDA-8163-tab")){
+  print("Data available, reproducing data preparation and clustering")
+  warning("It can take days to run the complete notebook. You should probably run it in parallel on a cluster!")
+}else{
+  stop(paste0("Due to data privacy we cannot share this dataset. Please get if from ",
+             "here (https://discover.ukdataservice.ac.uk/Catalogue/?sn=8163&type=Data%20catalogue) to fully reproduce the analysis"))
+  
+}
+```
+
+```{r}
+# Load the data
+cpes <- read_delim("../data/ncpes_data/UKDA-8163-tab/tab/cpes_2015_eul_file_21-02-2017-datav3.tab", 
+                   "\t", escape_double = FALSE, trim_ws = TRUE)
+
+# Remove all Score columns and other questions that are problematic
+X <- cpes %>%
+  dplyr::select(- contains("Score"), -DateReceived, -Sample_LengthOfStay, - matches("^Q5[a-z]$"),
+         - matches("^Q25[a-z]$"), -Q59, -Q64, -IMD_Quintile, - ICD10BasedCancerType, -Ethnicity) %>%
+  as.matrix() %>%
+  apply(2, as.character)
+
+```
+
+
+# Dir 
+
+```{r}
+ks <- rep(c(5,50, 100, 200), each=5)
+
+
+cluster_list <- mclapply(ks, mc.cores=5, function(k){
+  mixdir(X, n_latent=k, alpha=c(1,1), select_latent=FALSE, verbose=TRUE,
+         max_iter=5000, na_handle="ignore", repetitions=1)
+})
+
+
+write_rds(cluster_list, "../data/ncpes_clustering_results/dir_ks_list.RDS")
+```
+
+
+```{r}
+# Calculate the subsampling
+ks <- rep(c(5, 10, 15, 20, 25, 30, 40), each=5)
+
+
+cluster_list <- parallel::mclapply(ks, mc.cores=5, function(k){
+  mixdir(X, n_latent=k, alpha=c(1,1), select_latent=FALSE, verbose=TRUE,
+         max_iter=5000, na_handle="ignore", repetitions=1)
+})
+
+
+write_rds(cluster_list, "../data/ncpes_clustering_results/dir_ks_list2.RDS")
+```
+
+
+# DP
+
+```{r}
+ks <- rep(c(5,50, 100, 200), each=5)
+
+
+cluster_list <- parallel::mclapply(ks, mc.cores=5, function(k){
+  mixdir(X, n_latent=k, alpha=c(1,1), select_latent=TRUE, verbose=TRUE,
+         max_iter=5000, na_handle="ignore", repetitions=1)
+})
+
+
+write_rds(cluster_list, "../data/ncpes_clustering_results/dp_ks_list.RDS")
+```
+
+
+```{r}
+ks <- rep(c(5, 10, 15, 20, 25, 30, 40), each=5)
+
+
+cluster_list <- parallel::mclapply(ks, mc.cores=5, function(k){
+  mixdir(X, n_latent=k, alpha=c(1,1), select_latent=TRUE, verbose=TRUE,
+         max_iter=5000, na_handle="ignore", repetitions=1)
+})
+
+
+write_rds(cluster_list, "../data/ncpes_clustering_results/dp_ks_list2.RDS")
+
+```
+
+
+# Alphas
+
+```{r}
+alphas <-rep(c(1, 10, 100, 500, 1000, 1e4, 1e5), each=5)
+
+cluster_list <- parallel::mclapply(alphas, mc.cores=15, function(a){
+  mixdir(X, n_latent=15, alpha=c(a,1), select_latent=TRUE, verbose=TRUE,
+         max_iter=400, na_handle="ignore", repetitions=1)
+})
+
+
+write_rds(cluster_list, "../data/ncpes_clustering_results/dp_alphas_list3.RDS")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

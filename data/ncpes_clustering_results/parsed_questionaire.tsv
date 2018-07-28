@@ -1,0 +1,294 @@
+position	var	question	variable_type	response_id	response
+1	DateReceived	Date Received	NA	NA	"NA"
+2	Sample_Gender	Sample Gender	NOMINAL	NA	"NA"
+3	Sample_LengthOfStay	Sample Length Of Stay	SCALE	NA	"NA"
+4	Q1	Before you were told you needed to go to hospital about cancer, how many times did you see your GP (family doctor) about the health problem caused by cancer?	NOMINAL	1	None – I went straight to hospital
+4	Q1	Before you were told you needed to go to hospital about cancer, how many times did you see your GP (family doctor) about the health problem caused by cancer?	NOMINAL	2	None – I went to hospital following a cancer screening appointment
+4	Q1	Before you were told you needed to go to hospital about cancer, how many times did you see your GP (family doctor) about the health problem caused by cancer?	NOMINAL	3	I saw my GP once
+4	Q1	Before you were told you needed to go to hospital about cancer, how many times did you see your GP (family doctor) about the health problem caused by cancer?	NOMINAL	4	I saw my GP twice
+4	Q1	Before you were told you needed to go to hospital about cancer, how many times did you see your GP (family doctor) about the health problem caused by cancer?	NOMINAL	5	I saw my GP 3 or 4 times
+4	Q1	Before you were told you needed to go to hospital about cancer, how many times did you see your GP (family doctor) about the health problem caused by cancer?	NOMINAL	6	I saw my GP 5 or more times
+4	Q1	Before you were told you needed to go to hospital about cancer, how many times did you see your GP (family doctor) about the health problem caused by cancer?	NOMINAL	7	Don’t know / can’t remember
+6	Q2	How do you feel about the length of time you had to wait before your first appointment with a hospital doctor?	NOMINAL	1	I was seen as soon as I thought was necessary
+6	Q2	How do you feel about the length of time you had to wait before your first appointment with a hospital doctor?	NOMINAL	2	I should have been seen a bit sooner
+6	Q2	How do you feel about the length of time you had to wait before your first appointment with a hospital doctor?	NOMINAL	3	I should have been seen a lot sooner
+8	Q3	How long was it from the time you first thought something might be wrong with you until you first saw a GP or other doctor?	NOMINAL	1	Less than 3 months
+8	Q3	How long was it from the time you first thought something might be wrong with you until you first saw a GP or other doctor?	NOMINAL	2	3-6 months
+8	Q3	How long was it from the time you first thought something might be wrong with you until you first saw a GP or other doctor?	NOMINAL	3	6-12 months
+8	Q3	How long was it from the time you first thought something might be wrong with you until you first saw a GP or other doctor?	NOMINAL	4	More than 12 months
+8	Q3	How long was it from the time you first thought something might be wrong with you until you first saw a GP or other doctor?	NOMINAL	5	Don’t know / can’t remember
+9	Q4	In the last 12 months, have you had a diagnostic test(s) for cancer such as an endoscopy, biopsy, mammogram, or scan at one of the hospitals named in the covering letter?	NOMINAL	1	Yes - Go to Q5
+9	Q4	In the last 12 months, have you had a diagnostic test(s) for cancer such as an endoscopy, biopsy, mammogram, or scan at one of the hospitals named in the covering letter?	NOMINAL	2	No - Go to Q8
+10	Q5a	Beforehand, did you have all the information you needed about your test?	NOMINAL	1	Yes
+11	Q5b	Beforehand, did you have all the information you needed about your test?	NOMINAL	1	No, I would have liked more written information
+12	Q5c	Beforehand, did you have all the information you needed about your test?	NOMINAL	1	No, I would have liked more verbal information
+13	Q5d	Beforehand, did you have all the information you needed about your test?	NOMINAL	1	I did not need / want any information
+14	Q5e	Beforehand, did you have all the information you needed about your test?	NOMINAL	1	Don’t know / can’t remember
+15	Q6	Overall, how did you feel about the length of time you had to wait for your test to be done?	NOMINAL	1	It was about right verbal information
+15	Q6	Overall, how did you feel about the length of time you had to wait for your test to be done?	NOMINAL	2	It was a little too long
+15	Q6	Overall, how did you feel about the length of time you had to wait for your test to be done?	NOMINAL	3	It was much too long
+15	Q6	Overall, how did you feel about the length of time you had to wait for your test to be done?	NOMINAL	4	Don’t know / can’t remember
+17	Q7	Were the results of the test explained in a way you could understand?	NOMINAL	1	Yes, completely verbal information
+17	Q7	Were the results of the test explained in a way you could understand?	NOMINAL	2	Yes, to some extent
+17	Q7	Were the results of the test explained in a way you could understand?	NOMINAL	3	No, I did not understand the explanation
+17	Q7	Were the results of the test explained in a way you could understand?	NOMINAL	4	I did not have an explanation but would have liked one
+17	Q7	Were the results of the test explained in a way you could understand?	NOMINAL	5	I did not need an explanation
+17	Q7	Were the results of the test explained in a way you could understand?	NOMINAL	6	Don’t know / can’t remember
+19	Q8	When you were first told that you had cancer, had you been told you could bring a family member or friend with you?	NOMINAL	1	Yes verbal information
+19	Q8	When you were first told that you had cancer, had you been told you could bring a family member or friend with you?	NOMINAL	2	No
+19	Q8	When you were first told that you had cancer, had you been told you could bring a family member or friend with you?	NOMINAL	3	It was not necessary
+19	Q8	When you were first told that you had cancer, had you been told you could bring a family member or friend with you?	NOMINAL	4	I was told by phone or letter
+19	Q8	When you were first told that you had cancer, had you been told you could bring a family member or friend with you?	NOMINAL	5	Don’t know / can’t remember
+21	Q9	How do you feel about the way you were told you had cancer?	NOMINAL	1	It was done sensitively
+21	Q9	How do you feel about the way you were told you had cancer?	NOMINAL	2	It should have been done a bit more sensitively
+21	Q9	How do you feel about the way you were told you had cancer?	NOMINAL	3	It should have been done a lot more sensitively
+23	Q10	Did you understand the explanation of what was wrong with you?	NOMINAL	1	Yes, I completely understood
+23	Q10	Did you understand the explanation of what was wrong with you?	NOMINAL	2	Yes, I understood some of it
+23	Q10	Did you understand the explanation of what was wrong with you?	NOMINAL	3	No, I did not understand it
+23	Q10	Did you understand the explanation of what was wrong with you?	NOMINAL	4	Don’t know / can’t remember
+25	Q11	When you were told you had cancer, were you given written information about the type of cancer you had?	NOMINAL	1	Yes, completely
+25	Q11	When you were told you had cancer, were you given written information about the type of cancer you had?	NOMINAL	2	Yes, to some extent
+25	Q11	When you were told you had cancer, were you given written information about the type of cancer you had?	NOMINAL	3	No information about the type of cancer I had
+25	Q11	When you were told you had cancer, were you given written information about the type of cancer you had?	NOMINAL	4	There was only one type of treatment that was suitable for me
+25	Q11	When you were told you had cancer, were you given written information about the type of cancer you had?	NOMINAL	5	Don’t know / can’t remember
+27	Q12	Before your cancer treatment started, were your treatment options explained to you?	NOMINAL	1	Yes, definitely
+27	Q12	Before your cancer treatment started, were your treatment options explained to you?	NOMINAL	2	Yes, to some extent
+27	Q12	Before your cancer treatment started, were your treatment options explained to you?	NOMINAL	3	No, side effects were not explained information about the type of cancer I had
+27	Q12	Before your cancer treatment started, were your treatment options explained to you?	NOMINAL	4	I did not need an explanation that was suitable for me
+27	Q12	Before your cancer treatment started, were your treatment options explained to you?	NOMINAL	5	Don’t know / can’t remember
+29	Q13	Were the possible side effects of treatment(s) explained in a way you could understand?	NOMINAL	1	Yes, definitely
+29	Q13	Were the possible side effects of treatment(s) explained in a way you could understand?	NOMINAL	2	Yes, to some extent
+29	Q13	Were the possible side effects of treatment(s) explained in a way you could understand?	NOMINAL	3	No, side effects were not explained
+29	Q13	Were the possible side effects of treatment(s) explained in a way you could understand?	NOMINAL	4	I did not need an explanation
+29	Q13	Were the possible side effects of treatment(s) explained in a way you could understand?	NOMINAL	5	Don’t know / can’t remember
+31	Q14	Were you offered practical advice and support in dealing with the side effects of your treatment(s)?	NOMINAL	1	Yes, definitely
+31	Q14	Were you offered practical advice and support in dealing with the side effects of your treatment(s)?	NOMINAL	2	Yes, to some extent
+31	Q14	Were you offered practical advice and support in dealing with the side effects of your treatment(s)?	NOMINAL	3	No, I was not offered any practical advice or support
+31	Q14	Were you offered practical advice and support in dealing with the side effects of your treatment(s)?	NOMINAL	4	Don’t know / can’t remember
+33	Q15	Before you started your treatment(s), were you also told about any side effects of the treatment that could affect you in the future rather than straight away?	NOMINAL	1	Yes, definitely
+33	Q15	Before you started your treatment(s), were you also told about any side effects of the treatment that could affect you in the future rather than straight away?	NOMINAL	2	Yes, to some extent
+33	Q15	Before you started your treatment(s), were you also told about any side effects of the treatment that could affect you in the future rather than straight away?	NOMINAL	3	No, future side effects were not explained
+33	Q15	Before you started your treatment(s), were you also told about any side effects of the treatment that could affect you in the future rather than straight away?	NOMINAL	4	I did not need an explanation
+33	Q15	Before you started your treatment(s), were you also told about any side effects of the treatment that could affect you in the future rather than straight away?	NOMINAL	5	Don’t know / can’t remember
+35	Q16	Were you involved as much as you wanted to be in decisions about your care and treatment?	NOMINAL	1	Yes, definitely
+35	Q16	Were you involved as much as you wanted to be in decisions about your care and treatment?	NOMINAL	2	Yes, to some extent
+35	Q16	Were you involved as much as you wanted to be in decisions about your care and treatment?	NOMINAL	3	No, but I would like to have been more involved
+35	Q16	Were you involved as much as you wanted to be in decisions about your care and treatment?	NOMINAL	4	Don’t know / can’t remember
+37	Q17	Were you given the name of a Clinical Nurse Specialist who would support you through your treatment?	NOMINAL	1	Yes - Go to Q18
+37	Q17	Were you given the name of a Clinical Nurse Specialist who would support you through your treatment?	NOMINAL	2	No - Go to Q20
+37	Q17	Were you given the name of a Clinical Nurse Specialist who would support you through your treatment?	NOMINAL	3	Don’t know / can’t remember – Go to Q20
+39	Q18	How easy or difficult has it been for you to contact your Clinical Nurse Specialist?	NOMINAL	1	Very easy
+39	Q18	How easy or difficult has it been for you to contact your Clinical Nurse Specialist?	NOMINAL	2	Quite easy
+39	Q18	How easy or difficult has it been for you to contact your Clinical Nurse Specialist?	NOMINAL	3	Neither easy nor difficult
+39	Q18	How easy or difficult has it been for you to contact your Clinical Nurse Specialist?	NOMINAL	4	Quite difficult
+39	Q18	How easy or difficult has it been for you to contact your Clinical Nurse Specialist?	NOMINAL	5	Very difficult
+39	Q18	How easy or difficult has it been for you to contact your Clinical Nurse Specialist?	NOMINAL	6	I have not tried to contact my Clinical Nurse Specialist
+41	Q19	When you have had important questions to ask your Clinical Nurse Specialist, how often have you got answers you could understand?	NOMINAL	1	All or most of the time
+41	Q19	When you have had important questions to ask your Clinical Nurse Specialist, how often have you got answers you could understand?	NOMINAL	2	Some of the time
+41	Q19	When you have had important questions to ask your Clinical Nurse Specialist, how often have you got answers you could understand?	NOMINAL	3	Rarely or never
+41	Q19	When you have had important questions to ask your Clinical Nurse Specialist, how often have you got answers you could understand?	NOMINAL	4	I have not asked any questions
+43	Q20	Did hospital staff give you information about support or self-help groups for people with cancer?	NOMINAL	1	Yes
+43	Q20	Did hospital staff give you information about support or self-help groups for people with cancer?	NOMINAL	2	No, but I would have liked information
+43	Q20	Did hospital staff give you information about support or self-help groups for people with cancer?	NOMINAL	3	It was not necessary
+43	Q20	Did hospital staff give you information about support or self-help groups for people with cancer?	NOMINAL	4	Don’t know / can’t remember
+45	Q21	Did hospital staff discuss with you or give you information about the impact cancer could have on your day to day activities (for example, your work life or education)?	NOMINAL	1	Yes
+45	Q21	Did hospital staff discuss with you or give you information about the impact cancer could have on your day to day activities (for example, your work life or education)?	NOMINAL	2	No, but I would have liked a discussion or information
+45	Q21	Did hospital staff discuss with you or give you information about the impact cancer could have on your day to day activities (for example, your work life or education)?	NOMINAL	3	It was not necessary / relevant to me
+45	Q21	Did hospital staff discuss with you or give you information about the impact cancer could have on your day to day activities (for example, your work life or education)?	NOMINAL	4	Don’t know / can’t remember
+47	Q22	Did hospital staff give you information about how to get financial help or any benefits you might be entitled to?	NOMINAL	1	Yes
+47	Q22	Did hospital staff give you information about how to get financial help or any benefits you might be entitled to?	NOMINAL	2	No, but I would have liked information
+47	Q22	Did hospital staff give you information about how to get financial help or any benefits you might be entitled to?	NOMINAL	3	It was not necessary
+47	Q22	Did hospital staff give you information about how to get financial help or any benefits you might be entitled to?	NOMINAL	4	Don’t know / can’t remember
+49	Q23	Did hospital staff tell you that you could get free prescriptions?	NOMINAL	1	Yes
+49	Q23	Did hospital staff tell you that you could get free prescriptions?	NOMINAL	2	No, but I would have liked information
+49	Q23	Did hospital staff tell you that you could get free prescriptions?	NOMINAL	3	It was not necessary
+49	Q23	Did hospital staff tell you that you could get free prescriptions?	NOMINAL	4	Don’t know / can’t remember
+51	Q24	During the last 12 months, have you had an operation (such as removal of a tumour or lump) at one of the hospitals named in the covering letter?	NOMINAL	1	Yes - Go to Q25
+51	Q24	During the last 12 months, have you had an operation (such as removal of a tumour or lump) at one of the hospitals named in the covering letter?	NOMINAL	2	No - Go to Q27
+52	Q25a	Beforehand, did you have all the information you needed about your operation?	NOMINAL	1	Yes
+53	Q25b	Beforehand, did you have all the information you needed about your operation?	NOMINAL	1	No, I would have liked more written information
+54	Q25c	Beforehand, did you have all the information you needed about your operation?	NOMINAL	1	No, I would have liked more verbal information
+55	Q25d	Beforehand, did you have all the information you needed about your operation?	NOMINAL	1	I did not need / want any information
+56	Q25e	Beforehand, did you have all the information you needed about your operation?	NOMINAL	1	Don’t know / can’t remember
+57	Q26	After the operation, did a member of staff explain how it had gone in a way you could understand?	NOMINAL	1	Yes, completely
+57	Q26	After the operation, did a member of staff explain how it had gone in a way you could understand?	NOMINAL	2	Yes, to some extent
+57	Q26	After the operation, did a member of staff explain how it had gone in a way you could understand?	NOMINAL	3	No, but I would have liked an explanation
+57	Q26	After the operation, did a member of staff explain how it had gone in a way you could understand?	NOMINAL	4	I did not need an explanation
+59	Q27	During the last 12 months, have you had an operation or stayed overnight for cancer care at one of the hospitals named in the covering letter?	NOMINAL	1	Yes - Go to Q28
+59	Q27	During the last 12 months, have you had an operation or stayed overnight for cancer care at one of the hospitals named in the covering letter?	NOMINAL	2	No - Go to Q40
+60	Q28	Did groups of doctors and nurses talk in front of you as if you weren’t there?	NOMINAL	1	Yes, often
+60	Q28	Did groups of doctors and nurses talk in front of you as if you weren’t there?	NOMINAL	2	Yes, sometimes
+60	Q28	Did groups of doctors and nurses talk in front of you as if you weren’t there?	NOMINAL	3	No
+62	Q29	Did you have confidence and trust in the doctors treating you?	NOMINAL	1	Yes, in all of them
+62	Q29	Did you have confidence and trust in the doctors treating you?	NOMINAL	2	Yes, in some of them
+62	Q29	Did you have confidence and trust in the doctors treating you?	NOMINAL	3	No, in none of them
+64	Q30	If your family or someone else close to you wanted to talk to a doctor, were they able to?	NOMINAL	1	Yes, definitely
+64	Q30	If your family or someone else close to you wanted to talk to a doctor, were they able to?	NOMINAL	2	Yes, to some extent
+64	Q30	If your family or someone else close to you wanted to talk to a doctor, were they able to?	NOMINAL	3	No
+64	Q30	If your family or someone else close to you wanted to talk to a doctor, were they able to?	NOMINAL	4	No family or friends were involved
+64	Q30	If your family or someone else close to you wanted to talk to a doctor, were they able to?	NOMINAL	5	M y family did not want to talk to a doctor
+64	Q30	If your family or someone else close to you wanted to talk to a doctor, were they able to?	NOMINAL	6	I did not want my family or friends to talk to a doctor
+66	Q31	Did you have confidence and trust in the ward nurses treating you?	NOMINAL	1	Yes, in all of them
+66	Q31	Did you have confidence and trust in the ward nurses treating you?	NOMINAL	2	Yes, in some of them
+66	Q31	Did you have confidence and trust in the ward nurses treating you?	NOMINAL	3	No, in none of them
+68	Q32	In your opinion, were there enough nurses doctors treating you?	NOMINAL	1	There were always or nearly always enough on duty
+68	Q32	In your opinion, were there enough nurses doctors treating you?	NOMINAL	2	There were sometimes enough on duty
+68	Q32	In your opinion, were there enough nurses doctors treating you?	NOMINAL	3	There were rarely or never enough on duty
+70	Q33	While you were in hospital did the doctors and nurses ask you what name you prefer to be called by?	NOMINAL	1	Yes, all of them did
+70	Q33	While you were in hospital did the doctors and nurses ask you what name you prefer to be called by?	NOMINAL	2	Only some of them did
+70	Q33	While you were in hospital did the doctors and nurses ask you what name you prefer to be called by?	NOMINAL	3	None of them did
+72	Q34	Were you given enough privacy when discussing your condition or treatment?	NOMINAL	1	Yes, always
+72	Q34	Were you given enough privacy when discussing your condition or treatment?	NOMINAL	2	Yes, sometimes
+72	Q34	Were you given enough privacy when discussing your condition or treatment?	NOMINAL	3	No
+74	Q35	During your hospital visit, did you find someone on the hospital staff to talk to about your worries and fears?	NOMINAL	1	Yes, definitely
+74	Q35	During your hospital visit, did you find someone on the hospital staff to talk to about your worries and fears?	NOMINAL	2	Yes, to some extent
+74	Q35	During your hospital visit, did you find someone on the hospital staff to talk to about your worries and fears?	NOMINAL	3	No
+74	Q35	During your hospital visit, did you find someone on the hospital staff to talk to about your worries and fears?	NOMINAL	4	I had no worries or fears
+76	Q36	Do you think the hospital staff did everything they could to help control your pain?	NOMINAL	1	Yes, definitely
+76	Q36	Do you think the hospital staff did everything they could to help control your pain?	NOMINAL	2	Yes, to some extent
+76	Q36	Do you think the hospital staff did everything they could to help control your pain?	NOMINAL	3	No
+76	Q36	Do you think the hospital staff did everything they could to help control your pain?	NOMINAL	4	I did not have any pain
+78	Q37	Overall, did you feel you were treated with respect and dignity while you were in the hospital?	NOMINAL	1	Yes, always
+78	Q37	Overall, did you feel you were treated with respect and dignity while you were in the hospital?	NOMINAL	2	Yes, sometimes
+78	Q37	Overall, did you feel you were treated with respect and dignity while you were in the hospital?	NOMINAL	3	No
+80	Q38	Were you given clear written information about what you should or should not do after leaving hospital?	NOMINAL	1	Yes
+80	Q38	Were you given clear written information about what you should or should not do after leaving hospital?	NOMINAL	2	No
+80	Q38	Were you given clear written information about what you should or should not do after leaving hospital?	NOMINAL	3	Don’t know / can’t remember
+82	Q39	Did hospital staff tell you who to contact if you were worried about your condition or treatment after you left hospital?	NOMINAL	1	Yes
+82	Q39	Did hospital staff tell you who to contact if you were worried about your condition or treatment after you left hospital?	NOMINAL	2	No
+82	Q39	Did hospital staff tell you who to contact if you were worried about your condition or treatment after you left hospital?	NOMINAL	3	Don’t know / can’t remember
+84	Q40	During the last 12 months, have you been treated as an outpatient or day case for cancer care at one of the hospitals named in the covering letter?	NOMINAL	1	Yes - Go to Q41
+84	Q40	During the last 12 months, have you been treated as an outpatient or day case for cancer care at one of the hospitals named in the covering letter?	NOMINAL	2	No - Go to Q49
+85	Q41	While you were being treated as an outpatient or day case, did you find someone on the hospital staff to talk to about your worries and fears?	NOMINAL	1	Yes, definitely
+85	Q41	While you were being treated as an outpatient or day case, did you find someone on the hospital staff to talk to about your worries and fears?	NOMINAL	2	Yes, to some extent
+85	Q41	While you were being treated as an outpatient or day case, did you find someone on the hospital staff to talk to about your worries and fears?	NOMINAL	3	No
+85	Q41	While you were being treated as an outpatient or day case, did you find someone on the hospital staff to talk to about your worries and fears?	NOMINAL	4	I did not have any worries or fears
+87	Q42	The last time you had an outpatients appointment with a cancer doctor, did they have the right documents, such as medical notes, x-rays and test results?	NOMINAL	1	Yes
+87	Q42	The last time you had an outpatients appointment with a cancer doctor, did they have the right documents, such as medical notes, x-rays and test results?	NOMINAL	2	No
+87	Q42	The last time you had an outpatients appointment with a cancer doctor, did they have the right documents, such as medical notes, x-rays and test results?	NOMINAL	3	I didn’t have an appointment with a cancer doctor
+87	Q42	The last time you had an outpatients appointment with a cancer doctor, did they have the right documents, such as medical notes, x-rays and test results?	NOMINAL	4	Don’t know / can’t remember
+89	Q43	During the last 12 months, have you had radiotherapy at any of the hospitals named in the covering letter?	NOMINAL	1	Yes - Go to Q44
+89	Q43	During the last 12 months, have you had radiotherapy at any of the hospitals named in the covering letter?	NOMINAL	2	No - Go to Q46
+90	Q44	Beforehand, did you have all of the information you needed about your radiotherapy treatment?	NOMINAL	1	Yes, completely
+90	Q44	Beforehand, did you have all of the information you needed about your radiotherapy treatment?	NOMINAL	2	Yes, to some extent
+90	Q44	Beforehand, did you have all of the information you needed about your radiotherapy treatment?	NOMINAL	3	No
+90	Q44	Beforehand, did you have all of the information you needed about your radiotherapy treatment?	NOMINAL	4	I did not need any information
+92	Q45	Once you started your treatment, were you given enough information about whether your radiotherapy was working in a way you could understand?	NOMINAL	1	Yes, completely
+92	Q45	Once you started your treatment, were you given enough information about whether your radiotherapy was working in a way you could understand?	NOMINAL	2	Yes, to some extent
+92	Q45	Once you started your treatment, were you given enough information about whether your radiotherapy was working in a way you could understand?	NOMINAL	3	No
+92	Q45	Once you started your treatment, were you given enough information about whether your radiotherapy was working in a way you could understand?	NOMINAL	4	It is too early to know if my radiotherapy is working
+92	Q45	Once you started your treatment, were you given enough information about whether your radiotherapy was working in a way you could understand?	NOMINAL	5	I did not need any information
+94	Q46	During the last 12 months, have you had chemotherapy at any of the hospitals named in the covering letter?	NOMINAL	1	Yes - Go to Q47
+94	Q46	During the last 12 months, have you had chemotherapy at any of the hospitals named in the covering letter?	NOMINAL	2	No - Go to Q49
+95	Q47	Beforehand, did you have all of the information you needed about your chemotherapy treatment?	NOMINAL	1	Yes, completely
+95	Q47	Beforehand, did you have all of the information you needed about your chemotherapy treatment?	NOMINAL	2	Yes, to some extent
+95	Q47	Beforehand, did you have all of the information you needed about your chemotherapy treatment?	NOMINAL	3	No
+95	Q47	Beforehand, did you have all of the information you needed about your chemotherapy treatment?	NOMINAL	4	I did not need any information
+97	Q48	Once you started your treatment, were you given enough information about whether your chemotherapy was working in a way you could understand?	NOMINAL	1	Yes, completely
+97	Q48	Once you started your treatment, were you given enough information about whether your chemotherapy was working in a way you could understand?	NOMINAL	2	Yes, to some extent
+97	Q48	Once you started your treatment, were you given enough information about whether your chemotherapy was working in a way you could understand?	NOMINAL	3	No
+97	Q48	Once you started your treatment, were you given enough information about whether your chemotherapy was working in a way you could understand?	NOMINAL	4	It is too early to know if my chemotherapy is working
+97	Q48	Once you started your treatment, were you given enough information about whether your chemotherapy was working in a way you could understand?	NOMINAL	5	I did not need any information
+99	Q49	Did the doctors or nurses give your family or someone close to you all the information they needed to help care for you at home?	NOMINAL	1	Yes, definitely
+99	Q49	Did the doctors or nurses give your family or someone close to you all the information they needed to help care for you at home?	NOMINAL	2	Yes, to some extent
+99	Q49	Did the doctors or nurses give your family or someone close to you all the information they needed to help care for you at home?	NOMINAL	3	No
+99	Q49	Did the doctors or nurses give your family or someone close to you all the information they needed to help care for you at home?	NOMINAL	4	No family or friends were involved
+99	Q49	Did the doctors or nurses give your family or someone close to you all the information they needed to help care for you at home?	NOMINAL	5	My family or friends did not want or need information
+99	Q49	Did the doctors or nurses give your family or someone close to you all the information they needed to help care for you at home?	NOMINAL	6	I did not want my family or friends to be involved
+101	Q50	During your cancer treatment, were you given enough care and support from health or social services (for example, district nurses, home helps or physiotherapists)?	NOMINAL	1	Yes, definitely
+101	Q50	During your cancer treatment, were you given enough care and support from health or social services (for example, district nurses, home helps or physiotherapists)?	NOMINAL	2	Yes, to some extent
+101	Q50	During your cancer treatment, were you given enough care and support from health or social services (for example, district nurses, home helps or physiotherapists)?	NOMINAL	3	No
+101	Q50	During your cancer treatment, were you given enough care and support from health or social services (for example, district nurses, home helps or physiotherapists)?	NOMINAL	4	I did not need help from health or social services
+101	Q50	During your cancer treatment, were you given enough care and support from health or social services (for example, district nurses, home helps or physiotherapists)?	NOMINAL	5	Don’t know / can’t remember
+103	Q51	Once your cancer treatment finished, were you given enough care and support from health or social services (for example, district nurses, home helps or physiotherapists)?	NOMINAL	1	Yes, definitely
+103	Q51	Once your cancer treatment finished, were you given enough care and support from health or social services (for example, district nurses, home helps or physiotherapists)?	NOMINAL	2	Yes, to some extent
+103	Q51	Once your cancer treatment finished, were you given enough care and support from health or social services (for example, district nurses, home helps or physiotherapists)?	NOMINAL	3	No
+103	Q51	Once your cancer treatment finished, were you given enough care and support from health or social services (for example, district nurses, home helps or physiotherapists)?	NOMINAL	4	I did not need help from health or social services
+103	Q51	Once your cancer treatment finished, were you given enough care and support from health or social services (for example, district nurses, home helps or physiotherapists)?	NOMINAL	5	I am still having treatment
+103	Q51	Once your cancer treatment finished, were you given enough care and support from health or social services (for example, district nurses, home helps or physiotherapists)?	NOMINAL	6	Don’t know / can’t remember
+105	Q52	As far as you know, was your GP given enough information about your condition and the treatment you had at the hospital?	NOMINAL	1	Yes
+105	Q52	As far as you know, was your GP given enough information about your condition and the treatment you had at the hospital?	NOMINAL	2	No
+105	Q52	As far as you know, was your GP given enough information about your condition and the treatment you had at the hospital?	NOMINAL	3	Don’t know / can’t remember
+107	Q53	Do you think the GPs and nurses at your general practice did everything they could to support you while you were having cancer treatment?	NOMINAL	1	Yes, definitely
+107	Q53	Do you think the GPs and nurses at your general practice did everything they could to support you while you were having cancer treatment?	NOMINAL	2	Yes, to some extent
+107	Q53	Do you think the GPs and nurses at your general practice did everything they could to support you while you were having cancer treatment?	NOMINAL	3	No, they could have done more
+107	Q53	Do you think the GPs and nurses at your general practice did everything they could to support you while you were having cancer treatment?	NOMINAL	4	My general practice was not involved
+109	Q54	Did the different people treating and caring for you (such as GP, hospital doctors, hospital nurses, specialist nurses, community nurses) work well together to give you the best possible care?	NOMINAL	1	Yes, always
+109	Q54	Did the different people treating and caring for you (such as GP, hospital doctors, hospital nurses, specialist nurses, community nurses) work well together to give you the best possible care?	NOMINAL	2	Yes, most of the time
+109	Q54	Did the different people treating and caring for you (such as GP, hospital doctors, hospital nurses, specialist nurses, community nurses) work well together to give you the best possible care?	NOMINAL	3	Yes, some of the time
+109	Q54	Did the different people treating and caring for you (such as GP, hospital doctors, hospital nurses, specialist nurses, community nurses) work well together to give you the best possible care?	NOMINAL	4	No, never
+109	Q54	Did the different people treating and caring for you (such as GP, hospital doctors, hospital nurses, specialist nurses, community nurses) work well together to give you the best possible care?	NOMINAL	5	Don’t know / can’t remember
+111	Q55	Have you been given a care plan?	NOMINAL	1	Yes
+111	Q55	Have you been given a care plan?	NOMINAL	2	No
+111	Q55	Have you been given a care plan?	NOMINAL	3	I do not know / understand what a care plan is
+111	Q55	Have you been given a care plan?	NOMINAL	4	Don’t know / can’t remember
+113	Q56	Overall, how would you rate the administration of your care (getting letters at the right time, doctors having the right notes/tests results, etc.)?	NOMINAL	1	Very good
+113	Q56	Overall, how would you rate the administration of your care (getting letters at the right time, doctors having the right notes/tests results, etc.)?	NOMINAL	2	Good
+113	Q56	Overall, how would you rate the administration of your care (getting letters at the right time, doctors having the right notes/tests results, etc.)?	NOMINAL	3	Neither good nor bad
+113	Q56	Overall, how would you rate the administration of your care (getting letters at the right time, doctors having the right notes/tests results, etc.)?	NOMINAL	4	Quite bad
+113	Q56	Overall, how would you rate the administration of your care (getting letters at the right time, doctors having the right notes/tests results, etc.)?	NOMINAL	5	Very bad
+113	Q56	Overall, how would you rate the administration of your care (getting letters at the right time, doctors having the right notes/tests results, etc.)?	NOMINAL	6	Don’t know / can’t remember
+115	Q57	Overall, how do you feel about the length of time you had to wait when attending clinics and appointments for your cancer treatment?	NOMINAL	1	It was much too long
+115	Q57	Overall, how do you feel about the length of time you had to wait when attending clinics and appointments for your cancer treatment?	NOMINAL	2	It was a little too long
+115	Q57	Overall, how do you feel about the length of time you had to wait when attending clinics and appointments for your cancer treatment?	NOMINAL	3	It was about right
+115	Q57	Overall, how do you feel about the length of time you had to wait when attending clinics and appointments for your cancer treatment?	NOMINAL	4	Don’t know / can’t remember
+117	Q58	Since your diagnosis, has anyone discussed with you whether you would like to take part in cancer research?	NOMINAL	1	Yes
+117	Q58	Since your diagnosis, has anyone discussed with you whether you would like to take part in cancer research?	NOMINAL	2	No
+117	Q58	Since your diagnosis, has anyone discussed with you whether you would like to take part in cancer research?	NOMINAL	3	No, but I would have liked them
+117	Q58	Since your diagnosis, has anyone discussed with you whether you would like to take part in cancer research?	NOMINAL	4	Don’t know / can’t remember
+119	Q59	Overall, how would you rate your care?	NOMINAL	1	1 - Very poor
+119	Q59	Overall, how would you rate your care?	NOMINAL	10	10 - Very good
+122	Q60	How long is it since you were first treated for this cancer?	NOMINAL	1	Less than 1 year
+122	Q60	How long is it since you were first treated for this cancer?	NOMINAL	2	1 to 5 years
+122	Q60	How long is it since you were first treated for this cancer?	NOMINAL	3	More than 5 years
+122	Q60	How long is it since you were first treated for this cancer?	NOMINAL	4	Don’t know / can’t remember
+123	Q61	Had your cancer spread to other organs or parts of your body at the time you were first told you had cancer?	NOMINAL	1	Yes - Go to Q63
+123	Q61	Had your cancer spread to other organs or parts of your body at the time you were first told you had cancer?	NOMINAL	2	No - Go to Q62
+123	Q61	Had your cancer spread to other organs or parts of your body at the time you were first told you had cancer?	NOMINAL	3	Don't know - Go to Q63
+123	Q61	Had your cancer spread to other organs or parts of your body at the time you were first told you had cancer?	NOMINAL	4	Does not apply to my type of cancer - Go to Q63
+124	Q62	Which of the following applies?	NOMINAL	1	My cancer has been taken out / treated, without any sign of further problem
+124	Q62	Which of the following applies?	NOMINAL	2	 My cancer was taken out / treated without any sign of further problem, but has since come back / spread to other parts
+124	Q62	Which of the following applies?	NOMINAL	3	None of the above options apply to my type of cancer
+124	Q62	Which of the following applies?	NOMINAL	4	I would prefer not to say
+124	Q62	Which of the following applies?	NOMINAL	5	I don’t know
+125	Q64	Are you male or female?	NOMINAL	1	Male
+125	Q64	Are you male or female?	NOMINAL	2	Female
+126	Q67	Could we send you a survey in the future to ask about your health and healthcare?	NOMINAL	1	Yes, and I understand that this does NOT mean that I would have to take part in the future survey
+126	Q67	Could we send you a survey in the future to ask about your health and healthcare?	NOMINAL	2	No, I would prefer you not to contact me again
+127	IMD_Quintile	IMD Quintile	NOMINAL	NA	"NA"
+128	Age_band_3	Age band 3	NOMINAL	1	<55
+128	Age_band_3	Age band 3	NOMINAL	2	55-64
+128	Age_band_3	Age band 3	NOMINAL	3	65-74
+128	Age_band_3	Age band 3	NOMINAL	4	75+
+129	Ethnicity	Ethnicity	NOMINAL	1	White
+129	Ethnicity	Ethnicity	NOMINAL	2	BME
+129	Ethnicity	Ethnicity	NOMINAL	3	Not specified
+129	Ethnicity	Ethnicity	NOMINAL	4	Suppressed
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	1	Anal
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	2	Bladder
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	3	Breast
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	4	Cervical
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	5	Colon
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	6	DCIS
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	7	Endometrial
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	8	Leukaemia
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	9	Lip Oral Cavity and Pharynx
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	10	Lung
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	11	Melanoma
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	12	Multiple Myeloma
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	13	Non-Hodgkins Limphoma
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	14	Oesophageal
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	15	Other
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	16	Ovarian
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	17	Pancreatic
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	18	Prostate
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	19	Rectal
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	20	Renal
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	21	Secondary
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	22	Soft Tissue Sarcoma
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	23	Stomach
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	24	Testicular
+130	ICD10BasedCancerType	ICD10 Based Cancer Type	SCALE	25	Thyroid
+131	ResponseMode	Response Mode	NOMINAL	1	Postal
+131	ResponseMode	Response Mode	NOMINAL	2	Online
+131	ResponseMode	Response Mode	NOMINAL	3	Other

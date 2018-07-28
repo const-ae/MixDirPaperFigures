@@ -1,0 +1,825 @@
+---
+title: "Young Lives (Preparation)"
+output: html_notebook
+---
+
+In this notebook I load and clean the Young Lives survey data to bring it in an appropriate shape for clustering.
+Due to privacy reasons we cannot publicly share the raw data, but you can apply for access yourself [here]( https://discover.ukdataservice.ac.uk/catalogue?sn=7483) to reproduce all the preparation steps. After cleaning
+the data we cluster the data using different hyperparameters. Because the result contains only aggregated data
+we can share the resulting mixdir-objects (`data/young_lives_clustering_results`).
+
+```{r}
+library(tidyverse)
+library(purrr)
+library(stringr)
+library(forcats)
+```
+
+
+
+# Check if data is accessible
+
+```{r}
+if(file.exists("../data/young_lives_data/UKDA-7483-tab")){
+  print("Data available, reproducing data preparation and clustering")
+}else{
+  stop(paste0("Due to data privacy we cannot share this dataset. Please get if from ",
+             "here (https://discover.ukdataservice.ac.uk/catalogue?sn=7483) to fully reproduce the analysis"))
+}
+```
+
+
+# Load Data
+
+# Ethiopia
+
+Start with the analysis of Ethiopia:
+
+```{r}
+data_raw_ethiopia <- read_tsv("../data/young_lives_data/UKDA-7483-tab/tab/ethiopia_constructed.tab")
+
+data_cleaned_ethiopia <- data_raw_ethiopia %>%
+  # Remove some obviously useless variables
+  dplyr::select(- c(dint, headid, careid, dadid, momid, clustid, commid)) %>%
+  # Remove variables that are redundant
+  dplyr::select( -c(totalexp, totalexp_pa, totalexp_rpa,
+                    foodexp, foodexp_pa, foodexp_rpa,
+                    nfoodexp, nfoodexp_pa, nfoodexp_rpa)) %>%
+  # Remove variables that seem overly specific
+  dplyr::select(- c(anidrau, anirumi, anispec, anicowm, anicowt,
+                    anicalv, anibufm,anibuft, aniheif, anibull, anihebu, 
+                    anidonk, aniybul, anioxen, anicaml, anishee, anigoat, 
+                    anipigs, anipoul, anirabb, anibeeh, aniothr)) %>%
+  dplyr::select(- c(male05, male612, male1317, male1860, male61,
+                    female05, female612, female1317, female1860, female61)) %>%
+  dplyr::select(- c(fhfa, fwfa, fbfa, fwfl)) %>%
+  # A lot of variables are on a scale, I will cut them
+  mutate(headage=cut(headage, breaks=5),
+         headedu=case_when(
+           headedu < 4 ~ "<4",
+           headedu < 7 ~ ">=4&<7",
+           headedu < 10 ~ ">=7&<10",
+           headedu < 14 ~ ">=10&<14",
+           headedu == 28 ~ "adult literacy",
+           headedu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         wi=cut(wi, breaks=5),
+         hq=cut(hq, breaks=5),
+         cd=cut(cd, breaks=5),
+         foodexp_r=cut(foodexp_r, breaks=5),
+         nfoodexp_r=cut(nfoodexp_r, breaks=5),
+         totalexp_r=cut(totalexp_r, breaks=5),
+         animilk=fct_lump(as.factor(animilk), n=5, other_level = "more"),
+         ownland=cut(log(ownland + 0.001), breaks=5),
+         totland=cut(log(totland + 0.001), breaks=5),
+         hhsize=cut(hhsize, breaks=5),
+         careage=cut(careage, breaks=5),
+         caredu=case_when(
+           caredu < 4 ~ "<4",
+           caredu < 7 ~ ">=4&<7",
+           caredu < 10 ~ ">=7&<10",
+           caredu < 14 ~ ">=10&<14",
+           caredu == 28 ~ "adult literacy",
+           caredu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         agemon=cut(agemon, breaks=4),
+         chweight=cut(chweight, breaks=5),
+         chheight=cut(chheight, breaks=5),
+         bwght=cut(bwght, breaks=5),
+         bmi=cut(bmi, breaks=5),
+         zwfa=cut(zwfa, breaks=5),
+         zhfa=cut(zhfa, breaks=5),
+         zbfa=cut(zbfa, breaks=5),
+         zwfl=cut(zwfl, breaks=5),
+         dadage=cut(dadage, breaks=5),
+         dadedu=case_when(
+           dadedu < 4 ~ "<4",
+           dadedu < 7 ~ ">=4&<7",
+           dadedu < 10 ~ ">=7&<10",
+           dadedu < 14 ~ ">=10&<14",
+           dadedu == 28 ~ "adult literacy",
+           dadedu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         momage=cut(momage, breaks=5),
+         momedu=case_when(
+           momedu < 4 ~ "<4",
+           momedu < 7 ~ ">=4&<7",
+           momedu < 10 ~ ">=7&<10",
+           momedu < 14 ~ ">=10&<14",
+           momedu == 28 ~ "adult literacy",
+           momedu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         timesch=cut(timesch, breaks=5),
+         chgrade=case_when(
+           chgrade < 4 ~ "<4",
+           chgrade < 7 ~ ">=4&<7",
+           chgrade < 10 ~ ">=7&<10",
+           chgrade < 14 ~ ">=10&<14",
+           chgrade == 28 ~ "adult literacy",
+           chgrade == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         ravens=cut(ravens, breaks=5),
+         ppvtraw=cut(ppvtraw, breaks=5),
+         hsleep=cut(hsleep, breaks=5),
+         hcare=cut(hcare, breaks=5),
+         hchore=cut(hchore, breaks=5),
+         htask=cut(htask, breaks=5),
+         hwork=cut(hwork, breaks=5),
+         hschool=cut(hschool, breaks=5),
+         hstudy=cut(hstudy, breaks=5),
+         hplay=cut(hplay, breaks=5)
+       )  %>%
+    # Drop columns with only 1 value
+    select_if(~ length(unique(.x)) >= 2)
+
+```
+
+
+
+
+```{r}
+young_cohort_all_points_ethiopia <- data_cleaned_ethiopia %>%
+  filter(yc == 1 & panel1234 == 1)
+
+first_rounder_ethiopia <- young_cohort_all_points_ethiopia %>%
+  filter(round == 1) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+second_rounder_ethiopia <- young_cohort_all_points_ethiopia %>%
+  filter(round == 2) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+third_rounder_ethiopia <- young_cohort_all_points_ethiopia %>%
+  filter(round == 3) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+fourth_rounder_ethiopia <- young_cohort_all_points_ethiopia %>%
+  filter(round == 4) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+common_colnames_ethiopia <- intersect(intersect(colnames(first_rounder_ethiopia), colnames(second_rounder_ethiopia)),
+          intersect(colnames(third_rounder_ethiopia), colnames(fourth_rounder_ethiopia)))
+
+first_rounder_ethiopia <- first_rounder_ethiopia[, common_colnames_ethiopia]
+second_rounder_ethiopia <- second_rounder_ethiopia[, common_colnames_ethiopia]
+third_rounder_ethiopia <- third_rounder_ethiopia[, common_colnames_ethiopia]
+fourth_rounder_ethiopia <- fourth_rounder_ethiopia[, common_colnames_ethiopia]
+
+
+```
+
+
+
+
+
+
+
+# India
+
+```{r}
+data_raw_india <- read_tsv("../data/young_lives_data/young_lives_data/UKDA-7483-tab/tab/india_constructed.tab")
+
+data_cleaned_india <- data_raw_india %>%
+  # Remove some obviously useless variables
+  dplyr::select(- c(dint, headid, careid, dadid, momid, clustid, commid)) %>%
+  # Remove variables that are redundant
+  dplyr::select( -c(totalexp, totalexp_pc, totalexp_rpc,
+                    foodexp, foodexp_pc, foodexp_rpc,
+                    nfoodexp, nfoodexp_pc, nfoodexp_rpc)) %>%
+  # Remove variables that seem overly specific
+  dplyr::select(- c(anidrau, anirumi, anispec, anicowm, anicowt,
+                    anicalv, anibufm,anibuft, aniheif, anibull, anihebu, 
+                    anidonk, aniybul, anishee, anigoat, 
+                    anifish,anishri,anifshr,
+                    anipigs, anipoul, anirabb, anibeeh, aniothr)) %>%
+  dplyr::select(- c(male05, male612, male1317, male1860, male61,
+                    female05, female612, female1317, female1860, female61)) %>%
+  dplyr::select(- c(fhfa, fwfa, fbfa, fwfl))  %>%
+  # A lot of variables are on a scale, I will cut them
+  mutate(headage=cut(headage, breaks=5),
+         headedu=case_when(
+           headedu < 4 ~ "<4",
+           headedu < 7 ~ ">=4&<7",
+           headedu < 10 ~ ">=7&<10",
+           headedu < 14 ~ ">=10&<14",
+           headedu == 28 ~ "adult literacy",
+           headedu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         wi=cut(wi, breaks=5),
+         hq=cut(hq, breaks=5),
+         cd=cut(cd, breaks=5),
+         foodexp_r=cut(foodexp_r, breaks=5),
+         nfoodexp_r=cut(nfoodexp_r, breaks=5),
+         totalexp_r=cut(totalexp_r, breaks=5),
+         animilk=fct_lump(as.factor(animilk), n=5, other_level = "more"),
+         ownland=cut(log(ownland + 0.001), breaks=5),
+         totland=cut(log(totland + 0.001), breaks=5),
+         hhsize=cut(hhsize, breaks=5),
+         careage=cut(careage, breaks=5),
+         caredu=case_when(
+           caredu < 4 ~ "<4",
+           caredu < 7 ~ ">=4&<7",
+           caredu < 10 ~ ">=7&<10",
+           caredu < 14 ~ ">=10&<14",
+           caredu == 28 ~ "adult literacy",
+           caredu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         agemon=cut(agemon, breaks=4),
+         chweight=cut(chweight, breaks=5),
+         chheight=cut(chheight, breaks=5),
+         bwght=cut(bwght, breaks=5),
+         bmi=cut(bmi, breaks=5),
+         zwfa=cut(zwfa, breaks=5),
+         zhfa=cut(zhfa, breaks=5),
+         zbfa=cut(zbfa, breaks=5),
+         zwfl=cut(zwfl, breaks=5),
+         dadage=cut(dadage, breaks=5),
+         dadedu=case_when(
+           dadedu < 4 ~ "<4",
+           dadedu < 7 ~ ">=4&<7",
+           dadedu < 10 ~ ">=7&<10",
+           dadedu < 14 ~ ">=10&<14",
+           dadedu == 28 ~ "adult literacy",
+           dadedu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         momage=cut(momage, breaks=5),
+         momedu=case_when(
+           momedu < 4 ~ "<4",
+           momedu < 7 ~ ">=4&<7",
+           momedu < 10 ~ ">=7&<10",
+           momedu < 14 ~ ">=10&<14",
+           momedu == 28 ~ "adult literacy",
+           momedu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         timesch=cut(timesch, breaks=5),
+         chgrade=case_when(
+           chgrade < 4 ~ "<4",
+           chgrade < 7 ~ ">=4&<7",
+           chgrade < 10 ~ ">=7&<10",
+           chgrade < 14 ~ ">=10&<14",
+           chgrade == 28 ~ "adult literacy",
+           chgrade == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         ravens=cut(ravens, breaks=5),
+         ppvtraw=cut(ppvtraw, breaks=5),
+         hsleep=cut(hsleep, breaks=5),
+         hcare=cut(hcare, breaks=5),
+         hchore=cut(hchore, breaks=5),
+         htask=cut(htask, breaks=5),
+         hwork=cut(hwork, breaks=5),
+         hschool=cut(hschool, breaks=5),
+         hstudy=cut(hstudy, breaks=5),
+         hplay=cut(hplay, breaks=5)
+       )  %>%
+    # Drop columns with only 1 value
+    select_if(~ length(unique(.x)) >= 2)
+
+
+```
+
+```{r}
+young_cohort_all_points_india <- data_cleaned_india %>%
+  filter(yc == 1 & panel1234 == 1)
+
+first_rounder_india <- young_cohort_all_points_india %>%
+  filter(round == 1) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+second_rounder_india <- young_cohort_all_points_india %>%
+  filter(round == 2) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+third_rounder_india <- young_cohort_all_points_india %>%
+  filter(round == 3) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+fourth_rounder_india <- young_cohort_all_points_india %>%
+  filter(round == 4) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+common_colnames_india <- intersect(intersect(colnames(first_rounder_india), colnames(second_rounder_india)),
+          intersect(colnames(third_rounder_india), colnames(fourth_rounder_india)))
+
+first_rounder_india <- first_rounder_india[, common_colnames_india]
+second_rounder_india <- second_rounder_india[, common_colnames_india]
+third_rounder_india <- third_rounder_india[, common_colnames_india]
+fourth_rounder_india <- fourth_rounder_india[, common_colnames_india]
+
+```
+
+
+
+
+# Peru 
+
+
+```{r}
+data_raw_peru <- read_tsv("../data/young_lives_data/UKDA-7483-tab/tab/peru_constructed.tab")
+
+data_cleaned_peru <- data_raw_peru %>%
+  # Remove some obviously useless variables
+  dplyr::select(- c(dint, headid, careid, dadid, momid, clustid, placeid)) %>%
+  # Remove variables that are redundant
+  dplyr::select( -c(totalexp, totalexp_pc, totalexp_rpc,
+                    foodexp, foodexp_pc, foodexp_rpc,
+                    nfoodexp, nfoodexp_pc, nfoodexp_rpc))  %>%
+  # Remove variables that seem overly specific
+  dplyr::select(- c(anidrau, anirumi, anispec, anicowm, anicowt,
+                    anidonk, anishee, anigoat, 
+                    anioxen,anillam,aniguin,anisnai,
+                    anifish,anishri,anifshr,
+                    anipigs, anipoul, anirabb, anibeeh, aniothr)) %>%
+  dplyr::select(- c(male05, male612, male1317, male1860, male61,
+                    female05, female612, female1317, female1860, female61)) %>%
+  dplyr::select(- c(fhfa, fwfa, fbfa, fwfl))  %>%
+  # A lot of variables are on a scale, I will cut them
+  mutate(headage=cut(headage, breaks=5),
+         headedu=case_when(
+           headedu < 4 ~ "<4",
+           headedu < 7 ~ ">=4&<7",
+           headedu < 10 ~ ">=7&<10",
+           headedu < 14 ~ ">=10&<14",
+           headedu == 28 ~ "adult literacy",
+           headedu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         wi=cut(wi, breaks=5),
+         hq=cut(hq, breaks=5),
+         cd=cut(cd, breaks=5),
+         foodexp_r=cut(foodexp_r, breaks=5),
+         nfoodexp_r=cut(nfoodexp_r, breaks=5),
+         totalexp_r=cut(totalexp_r, breaks=5),
+         animilk=fct_lump(as.factor(animilk), n=5, other_level = "more"),
+         ownland=cut(log(ownland + 0.001), breaks=5),
+         totland=cut(log(totland + 0.001), breaks=5),
+         hhsize=cut(hhsize, breaks=5),
+         careage=cut(careage, breaks=5),
+         caredu=case_when(
+           caredu < 4 ~ "<4",
+           caredu < 7 ~ ">=4&<7",
+           caredu < 10 ~ ">=7&<10",
+           caredu < 14 ~ ">=10&<14",
+           caredu == 28 ~ "adult literacy",
+           caredu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         agemon=cut(agemon, breaks=4),
+         chweight=cut(chweight, breaks=5),
+         chheight=cut(chheight, breaks=5),
+         bwght=cut(bwght, breaks=5),
+         bmi=cut(bmi, breaks=5),
+         zwfa=cut(zwfa, breaks=5),
+         zhfa=cut(zhfa, breaks=5),
+         zbfa=cut(zbfa, breaks=5),
+         zwfl=cut(zwfl, breaks=5),
+         dadage=cut(dadage, breaks=5),
+         dadedu=case_when(
+           dadedu < 4 ~ "<4",
+           dadedu < 7 ~ ">=4&<7",
+           dadedu < 10 ~ ">=7&<10",
+           dadedu < 14 ~ ">=10&<14",
+           dadedu == 28 ~ "adult literacy",
+           dadedu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         momage=cut(momage, breaks=5),
+         momedu=case_when(
+           momedu < 4 ~ "<4",
+           momedu < 7 ~ ">=4&<7",
+           momedu < 10 ~ ">=7&<10",
+           momedu < 14 ~ ">=10&<14",
+           momedu == 28 ~ "adult literacy",
+           momedu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         timesch=cut(timesch, breaks=5),
+         chgrade=case_when(
+           chgrade < 4 ~ "<4",
+           chgrade < 7 ~ ">=4&<7",
+           chgrade < 10 ~ ">=7&<10",
+           chgrade < 14 ~ ">=10&<14",
+           chgrade == 28 ~ "adult literacy",
+           chgrade == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         ravens=cut(ravens, breaks=5),
+         ppvtraw=cut(ppvtraw, breaks=5),
+         hsleep=cut(hsleep, breaks=5),
+         hcare=cut(hcare, breaks=5),
+         hchore=cut(hchore, breaks=5),
+         htask=cut(htask, breaks=5),
+         hwork=cut(hwork, breaks=5),
+         hschool=cut(hschool, breaks=5),
+         hstudy=cut(hstudy, breaks=5),
+         hplay=cut(hplay, breaks=5)
+       )  %>%
+    # Drop columns with only 1 value
+    select_if(~ length(unique(.x)) >= 2)
+
+
+```
+
+
+```{r}
+young_cohort_all_points_peru <- data_cleaned_peru %>%
+  filter(yc == 1 & panel1234 == 1)
+
+first_rounder_peru <- young_cohort_all_points_peru %>%
+  filter(round == 1) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+second_rounder_peru <- young_cohort_all_points_peru %>%
+  filter(round == 2) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+third_rounder_peru <- young_cohort_all_points_peru %>%
+  filter(round == 3) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+fourth_rounder_peru <- young_cohort_all_points_peru %>%
+  filter(round == 4) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+common_colnames_peru <- intersect(intersect(colnames(first_rounder_peru), colnames(second_rounder_peru)),
+          intersect(colnames(third_rounder_peru), colnames(fourth_rounder_peru)))
+
+first_rounder_peru <- first_rounder_peru[, common_colnames_peru]
+second_rounder_peru <- second_rounder_peru[, common_colnames_peru]
+third_rounder_peru <- third_rounder_peru[, common_colnames_peru]
+fourth_rounder_peru <- fourth_rounder_peru[, common_colnames_peru]
+
+
+```
+
+
+
+
+
+
+
+
+
+
+# Vietnam 
+
+
+
+```{r}
+data_raw_vietnam <- read_tsv("../data/young_lives_data/UKDA-7483-tab/tab/vietnam_constructed.tab")
+
+data_cleaned_vietnam <- data_raw_vietnam %>%
+  # Remove some obviously useless variables
+  dplyr::select(- c(dint, headid, careid, dadid, momid, clustid, commid)) %>%
+  # Remove variables that are redundant
+  dplyr::select( -c(totalexp, totalexp_pc, totalexp_rpc,
+                    foodexp, foodexp_pc, foodexp_rpc,
+                    nfoodexp, nfoodexp_pc, nfoodexp_rpc, 
+                    elecqq, cookingqq,drwaterqq, toiletqq)) %>%
+  # Remove variables that seem overly specific
+  dplyr::select(- c(anidrau, anirumi, anispec, anicowm, anicowt,
+                    anicalv, anibufm,anibuft, anibull, anihebu, 
+                    anidonk, anishee, anigoat, 
+                    anipigs, anipoul, anirabb, aniothr)) %>%
+  dplyr::select(- c(male05, male612, male1317, male1860, male61,
+                    female05, female612, female1317, female1860, female61)) %>%
+  dplyr::select(- c(fhfa, fwfa, fbfa, fwfl))  %>%
+  # A lot of variables are on a scale, I will cut them
+  mutate(headage=cut(headage, breaks=5),
+         headedu=case_when(
+           headedu < 4 ~ "<4",
+           headedu < 7 ~ ">=4&<7",
+           headedu < 10 ~ ">=7&<10",
+           headedu < 14 ~ ">=10&<14",
+           headedu == 28 ~ "adult literacy",
+           headedu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         wi=cut(wi, breaks=5),
+         hq=cut(hq, breaks=5),
+         cd=cut(cd, breaks=5),
+         foodexp_r=cut(foodexp_r, breaks=5),
+         nfoodexp_r=cut(nfoodexp_r, breaks=5),
+         totalexp_r=cut(totalexp_r, breaks=5),
+         animilk=fct_lump(as.factor(animilk), n=5, other_level = "more"),
+         ownland=cut(log(ownland + 0.001), breaks=5),
+         totland=cut(log(totland + 0.001), breaks=5),
+         hhsize=cut(hhsize, breaks=5),
+         careage=cut(careage, breaks=5),
+         caredu=case_when(
+           caredu < 4 ~ "<4",
+           caredu < 7 ~ ">=4&<7",
+           caredu < 10 ~ ">=7&<10",
+           caredu < 14 ~ ">=10&<14",
+           caredu == 28 ~ "adult literacy",
+           caredu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         agemon=cut(agemon, breaks=4),
+         chweight=cut(chweight, breaks=5),
+         chheight=cut(chheight, breaks=5),
+         bwght=cut(bwght, breaks=5),
+         bmi=cut(bmi, breaks=5),
+         zwfa=cut(zwfa, breaks=5),
+         zhfa=cut(zhfa, breaks=5),
+         zbfa=cut(zbfa, breaks=5),
+         zwfl=cut(zwfl, breaks=5),
+         dadage=cut(dadage, breaks=5),
+         dadedu=case_when(
+           dadedu < 4 ~ "<4",
+           dadedu < 7 ~ ">=4&<7",
+           dadedu < 10 ~ ">=7&<10",
+           dadedu < 14 ~ ">=10&<14",
+           dadedu == 28 ~ "adult literacy",
+           dadedu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         momage=cut(momage, breaks=5),
+         momedu=case_when(
+           momedu < 4 ~ "<4",
+           momedu < 7 ~ ">=4&<7",
+           momedu < 10 ~ ">=7&<10",
+           momedu < 14 ~ ">=10&<14",
+           momedu == 28 ~ "adult literacy",
+           momedu == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         timesch=cut(timesch, breaks=5),
+         chgrade=case_when(
+           chgrade < 4 ~ "<4",
+           chgrade < 7 ~ ">=4&<7",
+           chgrade < 10 ~ ">=7&<10",
+           chgrade < 14 ~ ">=10&<14",
+           chgrade == 28 ~ "adult literacy",
+           chgrade == 29 ~ "religous edu",
+           TRUE ~ "other"
+         ),
+         ravens=cut(ravens, breaks=5),
+         ppvtraw=cut(ppvtraw, breaks=5),
+         hsleep=cut(hsleep, breaks=5),
+         hcare=cut(hcare, breaks=5),
+         hchore=cut(hchore, breaks=5),
+         htask=cut(htask, breaks=5),
+         hwork=cut(hwork, breaks=5),
+         hschool=cut(hschool, breaks=5),
+         hstudy=cut(hstudy, breaks=5),
+         hplay=cut(hplay, breaks=5)
+       )  %>%
+    # Drop columns with only 1 value
+    select_if(~ length(unique(.x)) >= 2)
+
+```
+
+
+
+
+```{r}
+young_cohort_all_points_vietnam <- data_cleaned_vietnam %>%
+  filter(yc == 1 & panel1234 == 1)
+
+first_rounder_vietnam <- young_cohort_all_points_vietnam %>%
+  filter(round == 1) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+second_rounder_vietnam <- young_cohort_all_points_vietnam %>%
+  filter(round == 2) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+third_rounder_vietnam <- young_cohort_all_points_vietnam %>%
+  filter(round == 3) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+fourth_rounder_vietnam <- young_cohort_all_points_vietnam %>%
+  filter(round == 4) %>%
+  select_if(~ length(unique(.x)) >= 2)
+
+common_colnames_vietnam <- intersect(intersect(colnames(first_rounder_vietnam), colnames(second_rounder_vietnam)),
+          intersect(colnames(third_rounder_vietnam), colnames(fourth_rounder_vietnam)))
+
+first_rounder_vietnam <- first_rounder_vietnam[, common_colnames_vietnam]
+second_rounder_vietnam <- second_rounder_vietnam[, common_colnames_vietnam]
+third_rounder_vietnam <- third_rounder_vietnam[, common_colnames_vietnam]
+fourth_rounder_vietnam <- fourth_rounder_vietnam[, common_colnames_vietnam]
+
+```
+
+
+
+
+
+
+
+
+
+
+
+# Performance comparison
+
+```{r}
+library(mixdir)
+library(poLCA)
+library(klaR)
+library(cba)
+library(parallel)
+```
+
+
+
+```{r}
+test_cluster_perf <- function(n_iter, n_latent,
+                              first_rounder, second_rounder, third_rounder, fourth_rounder){
+
+  library(poLCA)
+
+  # parallel::mclapply(1:n_iter, mc.cores=min(4,n_iter), function(idx){
+  lapply(1:n_iter, function(idx){
+    set.seed(idx)
+    selection <- sample(1:nrow(first_rounder), size=round(0.2 * nrow(first_rounder)))
+    X1 <- map_df(first_rounder[selection, ], ~ as.numeric(addNA(as.factor(.x))))[, -1]
+    X2 <- map_df(second_rounder[selection, ], ~ as.numeric(addNA(as.factor(.x))))[, -1]
+    X3 <- map_df(third_rounder[selection, ], ~ as.numeric(addNA(as.factor(.x))))[, -1]
+    X4 <- map_df(fourth_rounder[selection, ], ~ as.numeric(addNA(as.factor(.x))))[, -1]
+    all_X <- list(X1, X2, X3, X4)
+    print(paste0("Starting iter", idx))
+
+
+
+    mixdir_results <- lapply(all_X, function(X){
+      timing <- system.time(mixdir_result <- mixdir(X, n_latent=n_latent, select_latent = FALSE, alpha=1, beta = 0.1))
+      list(clustering=mixdir_result, timing=timing)
+    })
+
+    print("Finised Mixdir")
+
+    mixdirdp_results <- lapply(all_X, function(X){
+      timing <- system.time(mixdir_result <- mixdir(X, n_latent=n_latent, select_latent = TRUE, alpha=c(1,1), beta = 0.1))
+      list(clustering=mixdir_result, timing=timing)
+    })
+
+
+    print("Finished MixdirDP")
+
+     mixdirdp100_results <- lapply(all_X, function(X){
+      timing <- system.time(mixdir_result <- mixdir(X, n_latent=n_latent, select_latent = TRUE, alpha=c(100,1), beta = 0.1))
+      list(clustering=mixdir_result, timing=timing)
+    })
+
+    print("Finished MixdirDP100")
+
+    kmode_results <- lapply(all_X, function(X){
+      timing <- system.time(kmode_result <- klaR::kmodes(X,n_latent))
+      list(clustering=kmode_result, timing=timing)
+    })
+
+
+    print("Finished kmode")
+
+    rock_results <- lapply(all_X, function(X){
+      timing <- system.time(rock_result <- fitted(cba::rockCluster(cba::as.dummy(map_df(X, ~ as.integer(as.factor(.x)))),
+                                                                    n=n_latent, theta = 0.1, debug=FALSE)))
+      list(clustering=rock_result, timing=timing)
+    })
+
+    print("Finished ROCK")
+
+    lca_results <- lapply(all_X, function(X){
+      timing <- system.time(lca_result <- poLCA(formula(paste0("cbind(", paste0(colnames(X1), collapse = ","), ") ~ 1")),
+                        X, nclass=n_latent, verbose = FALSE))
+      list(clustering=lca_result, timing=timing)
+    })
+
+    print("Finished poLCA")
+
+    list(mixdir_results=mixdir_results,
+         mixdirdp_results=mixdirdp_results,
+         mixdirdp100_results=mixdirdp100_results,
+         kmode_results=kmode_results,
+         rock_results=rock_results,
+         lca_results=lca_results)
+
+  })
+}
+
+
+```
+
+
+
+Run Clustering
+
+**Warning:** This might take quite a while to complete, so it is a good idea to run it on a cluster in parrallel
+
+```{r}
+# Ethiopia 
+result_ethiopia <- test_cluster_perf(n_iter=5, n_latent=5,  
+                                     first_rounder_ethiopia,
+                                     second_rounder_ethiopia,
+                                     third_rounder_ethiopia,
+                                     fourth_rounder_ethiopia)
+saveRDS(result_ethiopia, "../data/young_lives_clustering_results/young_survey_perf_comp_ethiopia_lat5.RDS")
+
+result_ethiopia <- test_cluster_perf(n_iter=25, n_latent=25,  
+                                     first_rounder_ethiopia,
+                                     second_rounder_ethiopia,
+                                     third_rounder_ethiopia,
+                                     fourth_rounder_ethiopia)
+saveRDS(result_ethiopia, "../data/young_lives_clustering_results/young_survey_perf_comp_ethiopia_lat25.RDS")
+
+
+# India
+result_india <- test_cluster_perf(n_iter=5, n_latent=5,  
+                                     first_rounder_india,
+                                     second_rounder_india,
+                                     third_rounder_india,
+                                     fourth_rounder_india)
+saveRDS(result_india, "../data/young_lives_clustering_results/young_survey_perf_comp_india_lat5.RDS")
+
+result_india <- test_cluster_perf(n_iter=25, n_latent=25,  
+                                     first_rounder_india,
+                                     second_rounder_india,
+                                     third_rounder_india,
+                                     fourth_rounder_india)
+saveRDS(result_india, "../data/young_lives_clustering_results/young_survey_perf_comp_india_lat25.RDS")
+
+# Peru
+result_peru <- test_cluster_perf(n_iter=5, n_latent=5,  
+                                     first_rounder_peru,
+                                     second_rounder_peru,
+                                     third_rounder_peru,
+                                     fourth_rounder_peru)
+saveRDS(result_peru, "../data/young_lives_clustering_results/young_survey_perf_comp_peru_lat5.RDS")
+
+result_peru <- test_cluster_perf(n_iter=25, n_latent=25,  
+                                     first_rounder_peru,
+                                     second_rounder_peru,
+                                     third_rounder_peru,
+                                     fourth_rounder_peru)
+saveRDS(result_peru, "../data/young_lives_clustering_results/young_survey_perf_comp_peru_lat25.RDS")
+
+# Vietnam
+result_vietnam <- test_cluster_perf(n_iter=5, n_latent=5,  
+                                     first_rounder_vietnam,
+                                     second_rounder_vietnam,
+                                     third_rounder_vietnam,
+                                     fourth_rounder_vietnam)
+
+saveRDS(result_vietnam, "../data/young_lives_clustering_results/young_survey_perf_comp_vietnam_lat5.RDS")
+
+result_vietnam <- test_cluster_perf(n_iter=25, n_latent=25,  
+                                     first_rounder_vietnam,
+                                     second_rounder_vietnam,
+                                     third_rounder_vietnam,
+                                     fourth_rounder_vietnam)
+
+saveRDS(result_vietnam, "../data/young_lives_clustering_results/young_survey_perf_comp_vietnam_lat25.RDS")
+
+```
+
+
+
+
+
+
+# Prepare data for alluvial plot
+
+```{r}
+set.seed(1)
+res1 <- mixdir(first_rounder_ethiopia[, -1], n_latent=5, select_latent = FALSE, beta=5,
+               max_iter=200, repetitions = 5, verbose=TRUE)
+res2 <- mixdir(first_rounder_ethiopia[, -1], n_latent=5, select_latent = FALSE, beta=5,
+               max_iter=200, repetitions = 5, verbose=TRUE)
+res3 <- mixdir(first_rounder_ethiopia[, -1], n_latent=5, select_latent = FALSE, beta=5,
+               max_iter=200, repetitions = 5, verbose=TRUE)
+res4 <- mixdir(first_rounder_ethiopia[, -1], n_latent=5, select_latent = FALSE, beta=5,
+               max_iter=200, repetitions = 5, verbose=TRUE)
+
+set.seed(1)
+res1_rep <- lapply(1:5, function(x){
+  mixdir(first_rounder_ethiopia[, -1], n_latent=5, select_latent = FALSE, beta=5,
+               max_iter=200, repetitions = 1, verbose=TRUE)
+})
+
+write_rds(list(res1, res2, res3, res4, res1_rep), "../data/young_lives_clustering_results/young_lives_res1234_resrep.RDS")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,317 @@
+---
+title: "Dirichlet vs Dirichlet Process Prior"
+output: html_notebook
+---
+
+In this notebook I create the plots to demonstrate the difference of using a Dirichlet or a Dirichlet Process prior.
+First I use a synthetic dataset without any structure and secondly I use the Mushroom dataset.
+
+```{r setup}
+library(tidyverse)
+library(mixdir)
+
+library(poLCA)
+library(parallel)
+library(cowplot)
+```
+
+
+
+
+
+# Synthetic data
+
+Generate dataset without any structure:
+
+```{r}
+set.seed(1)
+pop <- matrix(sample(1:5, 20*500, replace=TRUE), nrow=500, ncol=20)
+cluster_sizes <- rep(c(5, 10, 25, 50, 100, 200), each=10)
+```
+
+Cluster with different hyperparameter settings
+
+```{r}
+res <- lapply(cluster_sizes, function(cs){
+  clust <- mixdir::mixdir(pop, n_latent=cs, select_latent=FALSE, alpha=1, beta=1, verbose=TRUE, max_iter = 1000)
+  print(paste0("Finished cluster ", cs))
+  clust
+})
+res_norm <- lapply(cluster_sizes, function(cs){
+  clust <- mixdir::mixdir(pop, n_latent=cs, select_latent=FALSE, alpha=1/cs, beta=1, verbose=TRUE,max_iter = 1000)
+  print(paste0("Finished cluster ", cs))
+  clust
+})
+res_dp <- lapply(cluster_sizes, function(cs){
+  clust <- mixdir::mixdir(pop, n_latent=cs, select_latent=TRUE, alpha=1, beta=1, verbose=TRUE,max_iter = 1000)
+  print(paste0("Finished cluster ", cs))
+  clust
+})
+
+
+write_rds(list(res=res, res_dp=res_dp, res_norm=res_norm), "../data/dirichlet_vs_dirichletprocess_results/dir_dp_1.RDS")
+``` 
+
+
+```{r}
+cores <- 4
+set.seed(1)
+pop <- matrix(sample(1:5, 20*1000, replace=TRUE), nrow=1000, ncol=20)
+cluster_sizes <- rep(c(5,10, 25, 50, 100, 200), each=10)
+
+res_dp001 <- mclapply(cluster_sizes, function(cs){
+  clust <- mixdir::mixdir(pop, n_latent=cs, select_latent=TRUE, alpha=c(1,0.01), beta=1, verbose=TRUE, max_iter = 1000)
+  print(paste0("Finished cluster ", cs))
+  clust
+}, mc.cores=cores)
+
+res_norm001 <- mclapply(cluster_sizes, function(cs){
+  clust <- mixdir::mixdir(pop, n_latent=cs, select_latent=FALSE, alpha=0.01/cs, beta=1, verbose=TRUE,max_iter = 1000)
+  print(paste0("Finished cluster ", cs))
+  clust
+}, mc.cores=cores)
+
+res_dp10 <- mclapply(cluster_sizes, function(cs){
+  clust <- mixdir::mixdir(pop, n_latent=cs, select_latent=TRUE, alpha=c(10, 1), beta=1, verbose=TRUE,max_iter = 1000)
+  print(paste0("Finished cluster ", cs))
+  clust
+}, mc.cores=cores)
+
+write_rds(list(res_dp001=res_dp001, res_norm001=res_norm001, res_dp10=res_dp10),
+          "../data/dirichlet_vs_dirichletprocess_results/dir_dp_2.RDS")
+```
+
+
+
+
+
+
+```{r fig.height=6, fig.width=7}
+dir_vs_dp_results1 <- read_rds("../data/dirichlet_vs_dirichletprocess_results/dir_dp_1.RDS")
+dir_vs_dp_results2 <- read_rds("../data/dirichlet_vs_dirichletprocess_results/dir_dp_2.RDS")
+
+res <- dir_vs_dp_results1$res
+res_norm <- dir_vs_dp_results1$res_norm
+res_dp <- dir_vs_dp_results1$res_dp
+res_dp001 <- dir_vs_dp_results2$res_dp001
+res_norm001 <- dir_vs_dp_results2$res_norm001
+res_dp10 <- dir_vs_dp_results2$res_dp10
+
+trend_plot_3 <- rbind(data_frame(Origin="Dirichlet(alpha)",
+           ID=seq_along(cluster_sizes),
+           ClusterSize=cluster_sizes,
+           ELBO=map_dbl(res, ~ .x$convergence[length(.x$convergence)])[seq_along(cluster_sizes)],
+           Number_of_Classes=map_dbl(res , ~ length(unique(.x$pred_class)))[seq_along(cluster_sizes)]),
+      data_frame(Origin="Dirichlet(alpha/k)",
+           ID=seq_along(cluster_sizes),
+           ClusterSize=cluster_sizes,
+           ELBO=map_dbl(res_norm, ~ .x$convergence[length(.x$convergence)])[seq_along(cluster_sizes)],
+           Number_of_Classes=map_dbl(res_norm , ~ length(unique(.x$pred_class)))[seq_along(cluster_sizes)]),
+      data_frame(Origin="Dirichlet(0.01/k)",
+           ID=seq_along(cluster_sizes),
+           ClusterSize=cluster_sizes,
+           ELBO=map_dbl(res_norm001, ~ .x$convergence[length(.x$convergence)]),
+           Number_of_Classes=map_dbl(res_norm001 , ~ length(unique(.x$pred_class))))) %>%
+  mutate(Origin= factor(Origin, levels=c("Dirichlet(alpha)", "Dirichlet(alpha/k)", "Dirichlet(0.01/k)"))) %>%
+  group_by(Origin, ClusterSize) %>%
+  mutate(Best=ELBO == max(ELBO)) %>%
+  ggplot(aes(x=ClusterSize, y=Number_of_Classes)) + 
+    stat_summary(fun.data="mean_cl_normal", geom="crossbar", width=30, size=0.3) +
+    ggbeeswarm::geom_quasirandom(aes(group=as.factor(ClusterSize)), width=10) +
+    scale_x_continuous(breaks=c(5, 25, 50, 100, 200),
+                       labels=c(5, 25, 50, 100, 200), minor_breaks = seq(0,200,by = 50)) +
+    facet_wrap(~ Origin, nrow=1, labeller = label_parsed) +
+    guides(color=guide_legend(title="Prior")) +
+    xlab("Maximum Cluster Size (K)") + ylab("Inferred Classes") + ylim(0, 90)
+
+
+trend_plot4 <- rbind(data_frame(Origin="Dirichlet~Process",
+           ID=seq_along(cluster_sizes),
+           ClusterSize=cluster_sizes,
+           ELBO=map_dbl(res_dp, ~ .x$convergence[length(.x$convergence)])[seq_along(cluster_sizes)],
+           Number_of_Classes=map_dbl(res_dp , ~ length(unique(.x$pred_class)))[seq_along(cluster_sizes)]),
+      data_frame(Origin="DP(alpha[1]==1, alpha[2]==0.01)",
+           ID=seq_along(cluster_sizes),
+           ClusterSize=cluster_sizes,
+           ELBO=map_dbl(res_dp001, ~ .x$convergence[length(.x$convergence)]),
+           Number_of_Classes=map_dbl(res_dp001 , ~ length(unique(.x$pred_class)))),
+      data_frame(Origin="DP(alpha[1]==10, alpha[2]==1)",
+           ID=seq_along(cluster_sizes),
+           ClusterSize=cluster_sizes,
+           ELBO=map_dbl(res_dp10, ~ .x$convergence[length(.x$convergence)]),
+           Number_of_Classes=map_dbl(res_dp10 , ~ length(unique(.x$pred_class))))) %>%
+  mutate(Origin= factor(Origin, levels=c("Dirichlet~Process", "DP(alpha[1]==1, alpha[2]==0.01)", "DP(alpha[1]==10, alpha[2]==1)"))) %>%
+  group_by(Origin, ClusterSize) %>%
+  mutate(Best=ELBO == max(ELBO)) %>%
+  filter(ClusterSize <= 200 & ClusterSize != 10) %>%
+  mutate(Number_of_Classes=Number_of_Classes + rnorm(n(), sd=0.01)) %>%
+  ggplot(aes(x=ClusterSize, y=Number_of_Classes)) + 
+    stat_summary(fun.data="mean_cl_normal", geom="crossbar", width=30, size=0.3) +
+    ggbeeswarm::geom_quasirandom(aes(group=as.factor(ClusterSize)), width=10) +
+    scale_x_continuous(breaks=c(5, 25, 50, 100, 200),
+                       labels=c(5, 25, 50, 100, 200), minor_breaks = seq(0,200,by = 50)) +
+    facet_wrap(~ Origin, nrow=1, labeller = label_parsed) +
+    guides(color=guide_legend(title="Prior")) +
+    xlab("Maximum Cluster Size (K)") + ylab("Inferred Classes") + ylim(0, 90)
+
+
+cowplot::plot_grid(trend_plot_3, trend_plot4, align="vh", ncol=1, labels = c("A", "B"))
+ggsave("../output/dirichlet_vs_process-trend_combined2.png",
+      width=7.0, height=6.0)
+```
+
+
+
+
+
+# Mushroom data
+
+Load data
+
+```{r}
+data("mushroom")
+set.seed(1)
+X <- mushroom
+cluster_sizes <- rep(c(5, 10, 25, 50, 100), each=10)
+```
+
+
+Cluster with different hyperparameter settings
+
+```{r}
+cores <- 8
+
+dp_results <- mclapply(cluster_sizes, mc.cores=cores, function(max_cluster){
+  res <- mixdir(X, n_latent=max_cluster, select_latent = TRUE, verbose=TRUE)
+  print(paste0("Finished ", max_cluster))
+  res
+})
+
+simple_results <- mclapply(cluster_sizes, mc.cores=cores, function(max_cluster){
+  res <- mixdir(X, n_latent=max_cluster, select_latent = FALSE, verbose=TRUE)
+  print(paste0("Finished ", max_cluster))
+  res
+})
+
+X2 <- X
+X2[colnames(X2)] <- lapply(X2[colnames(X2)], function(col) as.factor(if_else(is.na(col), "missing", as.character(col))))
+Xn <- X2
+Xn[colnames(Xn)] <- lapply(Xn[colnames(Xn)], as.numeric)
+
+
+poLCA_results <- mclapply(cluster_sizes, mc.cores=cores, function(max_cluster){
+  res <-poLCA(formula(paste0("cbind(", paste0(paste0("`",colnames(Xn), "`"), collapse = ","), ") ~ 1")),
+                                as.data.frame(Xn), nclass=max_cluster, verbose = FALSE)
+  print(paste0("Finished ", max_cluster))
+  res
+})
+
+
+
+dp_results100 <- mclapply(cluster_sizes, mc.cores=cores, function(max_cluster){
+  res <- mixdir(X, n_latent=max_cluster, select_latent = TRUE, alpha=c(100,1), verbose=TRUE)
+  print(paste0("Finished ", max_cluster))
+  res
+})
+
+dp_results001 <- mclapply(cluster_sizes, mc.cores=cores, function(max_cluster){
+  res <- mixdir(X, n_latent=max_cluster, select_latent = TRUE, alpha=c(1,0.01), verbose=TRUE)
+  print(paste0("Finished ", max_cluster))
+  res
+})
+
+
+
+simple_results001 <- mclapply(cluster_sizes, mc.cores=cores, function(max_cluster){
+  res <- mixdir(X, n_latent=max_cluster, select_latent = FALSE, alpha=0.01, verbose=TRUE)
+  print(paste0("Finished ", max_cluster))
+  res
+})
+
+
+
+write_rds(list(dp_results=dp_results, simple_results=simple_results,poLCA_results=poLCA_results,
+               dp_results100=dp_results100, dp_results001=dp_results001, simple_results001=simple_results001),
+          "output/mushroom_results.RDS")
+
+```
+
+
+
+```{r fig.height=6, fig.width=7}
+mushroom_results <- read_rds("../data/dirichlet_vs_dirichletprocess_results/mushroom_results.RDS")
+dp_results <- mushroom_results$dp_results
+simple_results <- mushroom_results$simple_results
+poLCA_results <- mushroom_results$poLCA_results
+dp_results100 <- mushroom_results$dp_results100
+dp_results001 <- mushroom_results$dp_results001
+simple_results001 <- mushroom_results$simple_results001
+
+mushroom_trend <- rbind(data_frame(Origin="Dirichlet",
+           ID=seq_along(cluster_sizes),
+           ClusterSize=cluster_sizes,
+           ELBO=map_dbl(simple_results, ~ .x$convergence[length(.x$convergence)]),
+           Number_of_Classes=map_dbl(simple_results , ~ length(unique(.x$pred_class)))),
+      data_frame(Origin="poLCA",
+           ID=seq_along(cluster_sizes),
+           ClusterSize=cluster_sizes,
+           ELBO=0,
+           Number_of_Classes=map_dbl(poLCA_results , ~ length(unique(.x$predclass)))),
+      data_frame(Origin="Dirichlet Process",
+           ID=seq_along(cluster_sizes),
+           ClusterSize=cluster_sizes,
+           ELBO=map_dbl(dp_results, ~ .x$convergence[length(.x$convergence)]),
+           Number_of_Classes=map_dbl(dp_results , ~ length(unique(.x$pred_class))))) %>%
+  mutate(Origin=factor(Origin, levels=c("poLCA", "Dirichlet", "Dirichlet Process"), ordered=TRUE)) %>%
+  ggplot(aes(x=ClusterSize, y=Number_of_Classes)) + 
+    stat_summary(fun.data="mean_cl_normal", geom="crossbar", width=30, size=0.3) +
+    ggbeeswarm::geom_quasirandom(aes(group=as.factor(ClusterSize)), width=10) +
+    scale_x_continuous(breaks=unique(cluster_sizes), labels=c(5, "", 25, 50, 100), minor_breaks = seq(0,100,by = 10)) +
+    facet_wrap(~ Origin, nrow=1) +
+    guides(color=guide_legend(title="Prior")) +
+    xlab("Maximum Cluster Size (K)") + ylab("Inferred Classes")+
+    ylim(0, 33)
+
+
+
+mushroom_trend2 <- rbind(data_frame(Origin="Dirichlet(alpha==0.01)",
+           ID=seq_along(cluster_sizes),
+           ClusterSize=cluster_sizes,
+           ELBO=map_dbl(simple_results001, ~ .x$convergence[length(.x$convergence)]),
+           Number_of_Classes=map_dbl(simple_results001 , ~ length(unique(.x$pred_class)))),
+      data_frame(Origin="DP(alpha[1]==1, alpha[2]==0.01)",
+           ID=seq_along(cluster_sizes),
+           ClusterSize=cluster_sizes,
+           ELBO=map_dbl(dp_results001, ~ .x$convergence[length(.x$convergence)]),
+           Number_of_Classes=map_dbl(dp_results001 , ~ length(unique(.x$pred_class)))),
+      data_frame(Origin="DP(alpha[1]==100, alpha[2]==1)",
+           ID=seq_along(cluster_sizes),
+           ClusterSize=cluster_sizes,
+           ELBO=map_dbl(dp_results100, ~ .x$convergence[length(.x$convergence)]),
+           Number_of_Classes=map_dbl(dp_results100 , ~ length(unique(.x$pred_class))))) %>%
+  mutate(Origin=factor(Origin, levels=c("Dirichlet(alpha==0.01)", "DP(alpha[1]==1, alpha[2]==0.01)", "DP(alpha[1]==100, alpha[2]==1)"), ordered=TRUE)) %>%
+  ggplot(aes(x=ClusterSize, y=Number_of_Classes)) + 
+    stat_summary(fun.data="mean_cl_normal", geom="crossbar", width=30, size=0.3) +
+    ggbeeswarm::geom_quasirandom(aes(group=as.factor(ClusterSize)), width=10) +
+    scale_x_continuous(breaks=unique(cluster_sizes), labels=c(5, "", 25, 50, 100), minor_breaks = seq(0,100,by = 10)) +
+    facet_wrap(~ Origin, nrow=1, labeller = label_parsed) +
+    guides(color=guide_legend(title="Prior")) +
+    xlab("Maximum Cluster Size (K)") + ylab("Inferred Classes") +
+    ylim(0, 33)
+
+plot_grid(mushroom_trend, mushroom_trend2, align = "vh", ncol=1, labels=c("A", "B"))
+ggsave("../output/mushroom-trend_combined2.png",
+       width=7.0, height=6.0)
+```
+
+
+
+
+
+
+
+
+
+
+
+

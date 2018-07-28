@@ -1,0 +1,326 @@
+---
+title: "Mental Health in Tech Survey 2016"
+output: html_notebook
+---
+
+
+In this notebook I want to analyze the mental health in tech 2016 survey.
+
+
+
+```{r setup}
+library(tidyverse)
+library(mixdir)
+library(cowplot)
+```
+
+
+
+Load data
+
+Before we can actually use the data we need to clean up the data a little bit:
+
+- Self employed people are asked different questions (-> lots of missing values)
+- Disorder is a list with entries, which are separated by a |
+- Gender question is a free form text field, with some _unusual_ answers
+- Other questions are free form
+- position is also multiple choice
+- If living in US, US states are specifically asked for
+- Age sometimes non-sense
+
+
+```{r}
+raw_data <- read_csv("../data/osmi_mental_health/mental-heath-in-tech-2016_20161114.csv")
+cleaned_data  <- raw_data %>%  
+  # Remove free form columns:
+  dplyr::select(- `Why or why not?`, - `Why or why not?_1`) %>%
+  # Remove outliers in age column and create age groups
+  mutate(`What is your age?` = if_else(`What is your age?` > 70 | `What is your age?` < 20, NA_integer_, `What is your age?`)) %>%
+  mutate(`What is your age?` = cut(`What is your age?`, breaks=5)) %>%
+  # Handle Gender
+  mutate(`What is your gender?` = case_when(
+    glue::trim(tolower(`What is your gender?`)) %in% c('male', 'm', 'man', 'cis male',
+                                                       'male.', 'male (cis)', 'man', 'sex is male',
+                                                       'cis male', 'malr', 'dude', 
+                                                       "i'm a man why didn't you make this a drop down question. you should of asked sex? and i would of answered yes please. seriously how much text can this take?",
+                                                       'mail', 'm|', 'male (trans, ftm)',
+                                                       'cisdude', 'cis man') ~ "male",
+    glue::trim(tolower(`What is your gender?`)) %in% c('female', 'i identify as female.', 'female',
+                                                       'female assigned at birth', 'f', 'woman', 'fm', 'f',
+                                                       'cis female', 'transitioned, m2f', 'female or multi-gender femme',
+                                                       'female/woman', 'cisgender female', 
+                                                       'mtf', 'fem', 'female (props for making this a freeform field, though)',
+                                                       'cis-woman', 'afab', 'transgender woman') ~ "female",
+    glue::trim(tolower(`What is your gender?`)) %in% c("androgynous", "bigender", "enby", "other/transfeminine", "agender",
+                                                       "female-bodied; no feelings about gender" , "fluid", "genderfluid", 
+                                                       "genderfluid (born female)", "genderflux demi-girl", "genderqueer",
+                                                       "genderqueer woman", "human", "male 9:1 female, roughly", "male/genderqueer",
+                                                       "nb masculine", "non-binary", "nonbinary", "queer") ~ "queer",
+    glue::trim(tolower(`What is your gender?`)) %in% c("n/a", "none of your business", "other", "unicorn") ~ NA_character_,
+    TRUE ~glue::trim(tolower(`What is your gender?`))
+  )) %>%
+  # Remove US State question and work
+  dplyr::select(- `What US state or territory do you live in?`, - `What US state or territory do you work in?`, - `What country do you work in?`) %>%
+  # Simplifying the country question
+  mutate(`What country do you live in?`= forcats::fct_lump(`What country do you live in?`, n=3)) %>%
+  # Split position
+  mutate(`Which of the following best describes your work position?`= stringr::str_split(`Which of the following best describes your work position?`, "\\|")) %>%
+  rowwise() %>%
+  mutate(`Which of the following best describes your work position?`=case_when(
+    "Executive Leadership" %in% `Which of the following best describes your work position?` ~ "leadership",
+    "Supervisor/Team Lead" %in% `Which of the following best describes your work position?` ~ "leadership",
+    "One-person shop" %in% `Which of the following best describes your work position?` ~ "one-person shop",
+    "Back-end Developer"  %in% `Which of the following best describes your work position?` ~ "back-end developer",
+    "Front-end Developer"  %in% `Which of the following best describes your work position?` ~ "front-end developer",
+    TRUE ~ "other"
+  )) %>%
+  # Fixing the disorders
+  mutate(`If yes, what condition(s) have you been diagnosed with?`= stringr::str_split(`If yes, what condition(s) have you been diagnosed with?`, "\\|")) %>%
+  mutate(`If yes, what condition(s) have you been diagnosed with?`=case_when(
+    any(c("Autism (Asperger's)", "Autism", "Asperges", "Autism Spectrum Disorder", "PDD-NOS") %in% `If yes, what condition(s) have you been diagnosed with?`) ~ "autism",
+    any(c("Combination of physical impairment (strongly near-sighted) with a possibly mental one (MCD / \"ADHD\", though its actually a stimulus filtering impairment)",
+          "ADD (w/o Hyperactivity)", "Attention Deficit Hyperactivity Disorder") %in% `If yes, what condition(s) have you been diagnosed with?`) ~ "adhd",
+    any(c("Post-traumatic Stress Disorder", "Stress Response Syndromes") %in% `If yes, what condition(s) have you been diagnosed with?`) ~ "ptsd",
+    "Mood Disorder (Depression, Bipolar Disorder, etc)" %in% `If yes, what condition(s) have you been diagnosed with?` ~ "mood disorder",
+    "Depression" %in% `If yes, what condition(s) have you been diagnosed with?` ~ "mood disorder",
+    "Anxiety Disorder (Generalized, Social, Phobia, etc)" %in% `If yes, what condition(s) have you been diagnosed with?` ~ "anxiety disorder",
+    "I haven't been formally diagnosed, so I felt uncomfortable answering, but Social Anxiety and Depression." %in% `If yes, what condition(s) have you been diagnosed with?` ~ "anxiety disorder",
+    "Substance Use Disorder" %in% `If yes, what condition(s) have you been diagnosed with?` ~ "substance use disorder",
+    TRUE ~ paste0(`If yes, what condition(s) have you been diagnosed with?`, collapse = "|")
+  )) %>%
+  mutate(`If maybe, what condition(s) do you believe you have?`= stringr::str_split(`If maybe, what condition(s) do you believe you have?`, "\\|")) %>%
+  mutate(`If maybe, what condition(s) do you believe you have?`=case_when(
+    any(c("Asperger Syndrome", "Asperger Syndrome", "Autism") %in% `If maybe, what condition(s) do you believe you have?`) ~ "autism",
+    any(c("Attention Deficit Hyperactivity Disorder") %in% `If maybe, what condition(s) do you believe you have?`) ~ "adhd",
+    any(c("Post-traumatic Stress Disorder", "Stress Response Syndromes") %in%`If maybe, what condition(s) do you believe you have?`) ~ "ptsd",
+    "Mood Disorder (Depression, Bipolar Disorder, etc)" %in% `If maybe, what condition(s) do you believe you have?` ~ "mood disorder",
+    "Anxiety Disorder (Generalized, Social, Phobia, etc)" %in% `If maybe, what condition(s) do you believe you have?` ~ "anxiety disorder",
+    any(c("Substance Use Disorder", "Addictive Disorder") %in% `If maybe, what condition(s) do you believe you have?`) ~ "substance use disorder",
+    TRUE ~ paste0(`If maybe, what condition(s) do you believe you have?`, collapse = "|")
+  )) %>%
+  mutate(`If so, what condition(s) were you diagnosed with?`= stringr::str_split(`If so, what condition(s) were you diagnosed with?`, "\\|")) %>%
+  mutate(`If so, what condition(s) were you diagnosed with?`=case_when(
+    any(c("Asperger Syndrome", "Asperger Syndrome", "Autism", "Autism (Asperger's)",
+          "PDD-NOS (see above)", "PDD-NOS", "Autism - while not a \"mental illness\", still greatly affects how I handle anxiety",
+          "Aspergers", "autism spectrum disorder") %in% `If so, what condition(s) were you diagnosed with?`) ~ "autism",
+    any(c("Attention Deficit Hyperactivity Disorder", "MCD (when it was diagnosed, the ultra-mega \"disorder\" ADHD didn't exist yet)",
+          "attention deficit disorder (but not the hyperactive version)", "Autism Spectrum Disorder", "ADD (w/o Hyperactivity)") %in% `If so, what condition(s) were you diagnosed with?`) ~ "adhd",
+    any(c("Post-traumatic Stress Disorder", "Stress Response Syndromes") %in%`If so, what condition(s) were you diagnosed with?`) ~ "ptsd",
+    "Mood Disorder (Depression, Bipolar Disorder, etc)" %in% `If so, what condition(s) were you diagnosed with?` ~ "mood disorder",
+    "Depression" %in% `If yes, what condition(s) have you been diagnosed with?` ~ "mood disorder",
+    "Anxiety Disorder (Generalized, Social, Phobia, etc)" %in% `If so, what condition(s) were you diagnosed with?` ~ "anxiety disorder",
+    any(c("Substance Use Disorder", "Addictive Disorder") %in% `If so, what condition(s) were you diagnosed with?`) ~ "substance use disorder",
+    TRUE ~ paste0(`If so, what condition(s) were you diagnosed with?`, collapse = "|")
+  )) %>%
+  ungroup() %>%
+  # Join the responses which mental disorder they have from yes and maybe people
+  mutate(mental_health_condition=case_when(
+    ! is.na(`If yes, what condition(s) have you been diagnosed with?`) ~ `If yes, what condition(s) have you been diagnosed with?`,
+    ! is.na(`If maybe, what condition(s) do you believe you have?`) ~ `If maybe, what condition(s) do you believe you have?`,
+    TRUE ~ "not applicable"
+  )) %>%
+  dplyr::select(- c(`If yes, what condition(s) have you been diagnosed with?`, `If maybe, what condition(s) do you believe you have?`)) %>%
+  # Remove irrelevant questions
+  dplyr::select(- c(`Is your primary role within your company related to tech/IT?`, `Is your employer primarily a tech company/organization?`))
+  
+
+```
+
+
+```{r}
+employed_data <- cleaned_data %>%
+  filter(`Are you self-employed?` == 0) %>%
+  select_if(~ length(unique(.x)) > 1)
+```
+
+
+
+# Cluster data
+
+This chunk can take a long time to run. It is a good idea to run it in parallel on a cluster.
+
+```{r}
+set.seed(1)
+alphas <- c(1, 5, 10, 20, 50, 100, 250, 500, 1000)
+cluster_list <- parallel::mclapply(alphas, mc.cores=10, function(a){
+  mixdir(X = employed_data, n_latent = 25, select_latent =TRUE, alpha = c(a, 1),
+                 max_iter=200, na_handle = "ignore", verbose=TRUE, repetitions = 5)
+})
+write_rds(cluster_list, "../data/osmi_mental_health/cluster_list.RDS")
+```
+
+
+```{r}
+cluster_list <- readRDS("../data/osmi_mental_health/cluster_list.RDS")
+res_dp <- cluster_list[alphas == 100][[1]]
+```
+
+
+
+# Check significance
+
+```{r}
+employed_data %>%
+  mutate(health_care_coverage=`Do you know the options for mental health care available under your employer-provided coverage?`) %>%
+  mutate(negative_consequence=factor(.$`Do you think that discussing a mental health disorder with your employer would have negative consequences?`,
+                                    levels=c("Yes", "Maybe", "No"), ordered = TRUE)) %>%
+  xtabs(~ negative_consequence + health_care_coverage, data=.) %>%
+  print() %>%
+  chisq.test() 
+
+
+employed_data %>%
+  filter(.$`Do you currently have a mental health disorder?` == "Yes") %>%
+  mutate(ptsd = mental_health_condition == "ptsd") %>%
+  mutate(NegativeConsequence=factor(.$`Do you think that discussing a mental health disorder with your employer would have negative consequences?`,
+                                    levels=c("Yes", "Maybe", "No"), ordered = TRUE)) %>%
+  {
+    tmp <- table(list(ptsd=.$ptsd, NegativeConsequence=.$NegativeConsequence))
+    print(tmp)
+    print(tmp / rowSums(tmp), digits = 2)
+    fisher.test(tmp)
+  } 
+
+# ADHD does not differ
+employed_data %>%
+  filter(.$`Do you currently have a mental health disorder?` == "Yes") %>%
+  mutate(adhd = mental_health_condition == "adhd") %>%
+  mutate(NegativeConsequence=factor(.$`Do you think that discussing a mental health disorder with your employer would have negative consequences?`,
+                                    levels=c("Yes", "Maybe", "No"), ordered = TRUE)) %>%
+  # filter(NegativeConsequence != "Maybe") %>%
+  # mutate(NegativeConsequence = forcats::fct_drop(NegativeConsequence)) %>%
+  {
+    tmp <- table(list(adhd=.$adhd, NegativeConsequence=.$NegativeConsequence))
+    print(tmp)
+    print(tmp / rowSums(tmp), digits = 2)
+    fisher.test(tmp)
+  } 
+
+```
+
+
+
+
+# Create Plot (Fig. 11)
+
+```{r fig.height=7, fig.width=15}
+# Diverging colorscheme for 3 classes from colorbrewer2.org
+color_scheme_ynm <- c("Yes"="#1b9e77", "Maybe"="#d95f02", "No"="#7570b3")
+
+{
+  par(xpd = NA, # switch off clipping, necessary to always see axis labels
+      bg = "white", # switch off background to avoid obscuring adjacent plots
+      oma=c(2, 1, 2, 1) # Set the margins 
+  ) 
+  purrr::map2_df(cluster_list, alphas, ~ data_frame(class=.x$pred_class, alpha=.y, individual=1:length(.x$pred_class))) %>%
+    mutate(alpha = as.factor(alpha),
+           class = as.factor(class)) %>%
+    right_join(data.frame(diagnosed=employed_data$`Have you been diagnosed with a mental health condition by a medical professional?` == "Yes",
+                          individual=1:nrow(employed_data))) %>%
+    filter(alpha == 1 | alpha == 10 | alpha == 100 | alpha == 1000) %>%
+    group_by(alpha) %>%
+    mutate(class = forcats::fct_lump(LETTERS[class], n=5)) %>%
+    ungroup() %>%
+    mutate(alpha=paste0(alpha)) %>%
+    spread(alpha, class) %>%
+    group_by_at(vars(matches("\\d+"), diagnosed)) %>%
+    summarize(freq=n()) %>%
+    {alluvial::alluvial(.[, 1:4], freq=.$freq, 
+                        col=if_else(.$diagnosed, color_scheme_ynm["Yes"], color_scheme_ynm["No"]), 
+                        border=if_else(.$diagnosed, color_scheme_ynm["Yes"], color_scheme_ynm["No"]), 
+                        hide=.$freq < 10, blocks=TRUE, gap.width = 0.2, alpha=0.8,
+                        axis_labels=paste0("α₁=", c(1,10,100,1000)))}
+   rect(2.8, -0.15, 3.2, 1.05, border="red", lwd=4)
+   alluvial_plot <- recordPlot()
+}
+
+tmp_heatmap <- res_dp$class_prob[order(res_dp$pred_class), 1:11]
+colnames(tmp_heatmap) <- c(LETTERS[1:10], "...")
+heatmap_plot <- as.data.frame(tmp_heatmap) %>%
+  mutate(Individuals=1:n()) %>%
+  gather(Class, value,  -Individuals) %>%
+  mutate(Class=factor(Class, levels=c(LETTERS[1:10], "..."), ordered=TRUE)) %>%
+  ggplot(aes(x=Class, y=Individuals, fill=value)) + 
+    geom_tile() +
+    scale_y_reverse(breaks=0,labels="") + 
+    viridis::scale_fill_viridis(name="Prob.")
+
+
+diagnose_plot <- employed_data %>%
+  mutate(class=as.factor(LETTERS[res_dp$pred_class])) %>%
+  filter(class == "A" | class == "B" | class == "C" | class == "D") %>%
+  mutate(diagnosed=`Have you been diagnosed with a mental health condition by a medical professional?`) %>%
+  mutate(diagnosed=forcats::fct_lump(as.factor(diagnosed), n=5)) %>%
+  group_by(class) %>%
+  summarize(res=list(enframe(table(diagnosed)))) %>%
+  unnest() %>%
+  mutate(name=factor(name, levels=c("Yes", "Maybe", "No"), ordered=TRUE)) %>%
+  ggplot(aes(x=class, y=value, fill=name)) +
+    geom_bar(position="stack",stat="identity") +
+    scale_fill_manual(name="", values=color_scheme_ynm) +
+    ggtitle("Mental Disorder Diag.") +
+    xlab("Class") + ylab("Count")
+
+neg_exp_plot <- employed_data %>%
+  mutate(class=as.factor(LETTERS[res_dp$pred_class])) %>%
+  filter(class == "A" | class == "B" | class == "C" | class == "D") %>%
+  mutate(negative_consequence=`Do you think that discussing a mental health disorder with your employer would have negative consequences?`) %>%
+  mutate(negative_consequence=forcats::fct_lump(as.factor(negative_consequence), n=5)) %>%
+  group_by(class) %>%
+  summarize(res=list(enframe(table(negative_consequence)))) %>%
+  unnest() %>%
+  mutate(name=factor(name, levels=c("Yes", "Maybe", "No"), ordered=TRUE)) %>%
+  ggplot(aes(x=class, y=value, fill=name)) +
+    geom_bar(position="stack",stat="identity") +
+    scale_fill_manual(name="", values=color_scheme_ynm) +
+    ggtitle("Expect Neg. Cons.")  +
+    xlab("Class") + ylab("Count")
+
+leave_plot <- employed_data %>%
+  mutate(leaving=factor(.$`If a mental health issue prompted you to request a medical leave from work, asking for that leave would be:`,
+                        levels=c("Very easy", "Somewhat easy", "Neither easy nor difficult", "Somewhat difficult", "Very difficult", "I don't know"),
+                        ordered = TRUE)) %>%
+  mutate(negative_consequence=factor(.$`Do you think that discussing a mental health disorder with your employer would have negative consequences?`,
+                                    levels=c("Yes", "Maybe", "No"), ordered = TRUE)) %>%
+  xtabs(~ negative_consequence + leaving, data=.) %>%
+  as.data.frame() %>%
+  group_by(negative_consequence) %>%
+  mutate(Freq=Freq/sum(Freq)) %>%
+  ungroup() %>%
+  mutate(negative_consequence=factor(negative_consequence, levels=c("No", "Maybe", "Yes"), ordered=TRUE)) %>%
+  ggplot(aes(x=leaving, y=negative_consequence, fill=Freq)) +
+    geom_tile() +
+    geom_vline(xintercept = 5.5) + 
+    viridis::scale_fill_viridis() + 
+    theme(axis.text.x =  element_text(angle= -16, hjust=0.1)) +
+    ggtitle("Requesting leave for mental health issue is...")  +
+    ylab("Expect Neg.") + xlab("")
+
+
+left_plots <- plot_grid(alluvial_plot, leave_plot, labels = c('A', 'E'), ncol = 1, rel_heights = c(2, 1))
+right_plots <- plot_grid(heatmap_plot, diagnose_plot, neg_exp_plot, labels = c('B', 'C', 'D'), ncol = 1, rel_heights = c(1, 1, 1), align = "v")
+plot_grid(left_plots, right_plots, labels = c('', ''), nrow = 1, rel_widths = c(3, 1))
+
+ggsave("../output/mental_health_complete.png", width=15, height=7)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

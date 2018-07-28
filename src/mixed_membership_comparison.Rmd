@@ -1,0 +1,156 @@
+---
+title: "Comparison with Mixed  Membership Model"
+output: html_notebook
+---
+
+In this notebook I show how our model differs from the popular mixed membership model.
+I generate a synthetic dataset and fit it with `mixedMem`, `poLCA` and `mixdir`.
+
+```{r setup}
+library(tidyverse)
+library(mixdir)
+library(mixedMem)
+library(poLCA)
+library(cowplot)
+```
+
+
+
+# Generate Data
+
+```{r}
+set.seed(1)
+
+N <- 2000
+J <- 40
+R <- 3
+K <- 2
+
+Z <- t(sapply(1:N, function(i){
+  lambda <- c(extraDistr::rdirichlet(1, rep(1, K)))
+  sapply(1:J, function(j) which(rmultinom(1, 1, lambda) == 1))
+}))
+
+
+profiles <- list(group_a=extraDistr::rdirichlet(J, alpha=rep(0.01, R)),
+                 group_b=extraDistr::rdirichlet(J, alpha=rep(0.01, R)))
+X <- t(apply(Z, 1, function(col){
+  sapply(seq_along(col), function(k_idx){
+    c("A", "B", "C")[c(rmultinom(1, 1, prob=profiles[[col[k_idx]]][k_idx, ])) == 1]
+  })
+}))
+
+X[1:10, 1:6]
+```
+
+
+# mixedMem
+
+```{r}
+# Sample Size 
+Total <- N 
+# Number of variables 
+# J <- length(questions)
+# we only have one replicate for each of the variables 
+Rj <- rep(1, J) 
+# Nijr indicates the number of ranking levels for each variable. 
+# Since all our data is multinomial it should be an array of all 1s 
+Nijr <- array(1, dim = c(Total, J, max(Rj))) 
+# Number of sub-populations 
+N_latent <- 2
+
+# There are 3 choices for each of the variables ranging from 0 to 1. 
+Vj <- rep(3, J) 
+# we initialize alpha to .1 
+alpha <- rep(0.1, N_latent) 
+#All variables are multinomial 
+dist <- rep("multinomial", J) 
+# obs are the observed responses. it is a 4-d array indexed by i,j,r,n 
+# note that obs ranges from 0 to 1 for each response 
+obs <- array(0, dim = c(Total, J, max(Rj), max(Nijr))) 
+answers <- map_df(as.data.frame(X), ~ as.numeric(as.factor(.x)))
+obs[, , 1, 1] <- as.matrix(answers) - 1
+
+# Initialize theta randomly with Dirichlet distributions 
+theta <- array(0, dim = c(J, N_latent, max(Vj)))
+for (j in 1:J) { 
+  theta[j, , ] <- gtools::rdirichlet(N_latent, rep(2, Vj[j]))
+}
+# Create the mixedMemModel 
+# This object encodes the initialization points for the variational EM algorithim 
+# and also encodes the observed parameters and responses 
+initial <- mixedMemModel(Total = Total, J = J, Rj = Rj, Nijr = Nijr, K = N_latent, Vj = Vj, alpha = alpha, theta = theta, dist = dist, obs = obs)
+
+
+system.time(out <- mmVarFit(initial, printStatus = 1, printMod = 25))
+```
+
+
+# mixdir
+
+```{r}
+system.time(res <- mixdir(X, n_latent=2, alpha= 1, beta=0.1))
+```
+
+
+# poLCA
+
+```{r}
+poLCA_X <- as.data.frame(answers)
+poLCA_X <- purrr::map_df(poLCA_X, ~ as.factor(.x + 1))
+system.time(lca_result <- poLCA(formula(paste0("cbind(", paste0(paste0(colnames(poLCA_X)), collapse = ","), ") ~ 1")),
+                                poLCA_X, nclass=2, verbose = FALSE, nrep=1))
+```
+
+
+
+# Plot results
+
+
+```{r fig.height=4, fig.width=7}
+super_matrix <- rbind(
+  sapply(1:N, function(i){
+    table(factor(Z[i, ], levels=1:K))/J
+  }),
+  sapply(lca_result$predclass, function(k){
+    x <- rep(0, 2)
+    x[k] <- 1
+    x
+  }),
+  1-t(res$class_prob),
+  t(out$phi/rowSums(out$phi))
+)
+
+rownames(super_matrix) <- c("Generated Data", "", "Latent Class\n(poLCA)", "", "Mixdir", "", "Mixed Membership\n(mixedMem)", "")
+
+(t(super_matrix) * 100) %>%
+  as.data.frame() %>%
+  dplyr::select(- c(V2, V4, V6, V8)) %>%
+  mutate(`Latent Class\n(poLCA)`=100-`Latent Class\n(poLCA)`,
+         `Generated Data` = 100-`Generated Data`) %>%
+  mutate(ind=forcats::fct_reorder(as.factor(1:n()), apply(Z, 1, mean)- 1)) %>%
+  gather(Method, Value, -ind) %>%
+  mutate(Method = factor(Method, levels=rev(c("Generated Data", "Mixed Membership\n(mixedMem)", "Mixdir", "Latent Class\n(poLCA)")), ordered = TRUE)) %>%
+  ggplot(aes(x=as.numeric(ind), y=Method, fill=Value)) +
+    geom_tile(height=0.75) +
+    scale_fill_distiller(type="div", name="A %") +
+    scale_x_continuous(labels=c("    0% A\n100% B", "50% A\n50% B", "100% A\n    0% B"), breaks=c(20, 1000, 1980)) +
+    ylab("") + xlab("Individuals")
+
+ggsave("../output/mixed_membership_example.png",
+      width=7, height=4.0)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

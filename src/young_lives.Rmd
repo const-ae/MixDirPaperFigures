@@ -1,0 +1,465 @@
+---
+title: "Young Lives (Analysis)"
+output: html_notebook
+---
+
+In this notebook I evaluate the clustering results on the Young Lives for all four locations India, Vietnam, Peru and Ethiopia.
+The young lives survey follows children across 4 time points which allows us to evaluate the clustering quality using the 
+consistency of the clusterings over time. A good method should be able usually to assign a child to the same cluster regardless of the
+particular time point.
+
+
+```{r setup}
+library(tidyverse)
+library(purrr)
+library(stringr)
+library(forcats)
+library(mixdir)
+library(cowplot)
+set.seed(1)
+```
+
+
+
+
+
+# Check performance on all 4 sub-studies (Fig. 8)
+
+Load clustering results for India, Vietnam, Peru and Ethiopia
+
+```{r}
+
+perf_comparison_countries <- list(India=read_rds("../data/young_lives_clustering_results/young_survey_perf_comp_india_lat5.RDS"),
+                                  Vietnam=read_rds("../data/young_lives_clustering_results/young_survey_perf_comp_vietnam_lat5.RDS"),
+                                  Peru=read_rds("../data/young_lives_clustering_results/young_survey_perf_comp_peru_lat5.RDS"),
+                                  Ethiopia=read_rds("../data/young_lives_clustering_results/young_survey_perf_comp_ethiopia_lat5.RDS"))
+
+class_assignment <- map2_df(perf_comparison_countries, names(perf_comparison_countries), function(perf_comparison, country){
+  map2_df(perf_comparison, seq_along(perf_comparison), function(perf, iter){
+    map2_df(perf, names(perf), function(res_list, name){
+      method <- str_split(name, "_")[[1]][1]
+      map2_df(res_list, seq_along(res_list), function(res_cont, round){
+        res <- res_cont$clustering
+        classes <- if(method == "mixdir" | method == "mixdirdp" | method == "mixdirdp100"){
+          res$pred_class
+        }else if(method == "lca"){
+          res$predclass
+        }else if(method == "kmode"){
+          res$cluster
+        }else if(method == "rock"){
+          as.integer(res$cl)
+        }else{
+          stop("Should not come here")
+        }
+        data_frame(country=country, iter=iter, method=method, round=round, class=classes, ind=1:length(classes), time=res_cont$timing["user.self"])
+      })
+    })
+  })
+})
+
+perf_comparison_countries25 <- list(India=read_rds("../data/young_lives_clustering_results/young_survey_perf_comp_india_lat25.RDS"),
+                                    Vietnam=read_rds("../data/young_lives_clustering_results/young_survey_perf_comp_vietnam_lat25.RDS"),
+                                    Peru=read_rds("../data/young_lives_clustering_results/young_survey_perf_comp_peru_lat25.RDS"),
+                                    Ethiopia=read_rds("../data/young_lives_clustering_results/young_survey_perf_comp_ethiopia_lat25.RDS"))
+
+class_assignment25 <- map2_df(perf_comparison_countries25, names(perf_comparison_countries25), function(perf_comparison, country){
+  map2_df(perf_comparison, seq_along(perf_comparison), function(perf, iter){
+    map2_df(perf, names(perf), function(res_list, name){
+      method <- str_split(name, "_")[[1]][1]
+      map2_df(res_list, seq_along(res_list), function(res_cont, round){
+        res <- res_cont$clustering
+        classes <- if(method == "mixdir" | method == "mixdirdp" | method == "mixdirdp100"){
+          res$pred_class
+        }else if(method == "lca"){
+          res$predclass
+        }else if(method == "kmode"){
+          res$cluster
+        }else if(method == "rock"){
+          as.integer(res$cl)
+        }else{
+          stop("Should not come here")
+        }
+        data_frame(country=country, iter=iter, method=method, round=round, class=classes, ind=1:length(classes), time=res_cont$timing["user.self"])
+      })
+    })
+  })
+})
+
+```
+
+
+Create the clustering consistency beeswarm plot for K=5
+
+```{r}
+p_perf_lat5 <- class_assignment %>%
+  filter(method != "mixdirdp100") %>%
+  mutate(class = as.integer(as.factor(class))) %>%
+  group_by(country, method, iter) %>%
+  do({
+    tmp <- .
+    cross_df(list(a=unique(tmp$round), b=unique(tmp$round))) %>%
+      filter(a < b) %>%
+      rowwise() %>%
+      mutate(ARI= mcclust::arandi(tmp[tmp$round == a, ]$class,
+                                  tmp[tmp$round == b, ]$class))
+  }) %>%
+  ungroup() %>%
+  mutate(method= fct_reorder(as.factor(method), -ARI, median)) %>%
+  ggplot(aes(x=method, y=ARI)) + 
+    ggbeeswarm::geom_quasirandom() +
+    stat_summary(fun.data = "mean_cl_boot", colour = "red", geom = "crossbar", size=0.4) +
+    # ggsignif::geom_signif(comparisons = list(c("lca", "mixdir"), c("mixdir", "mixdirdp"), c("mixdirdp", "kmode")),
+    #                       y_position=c(0.82, 0.74, 0.6), map_signif_level = TRUE, test.args=list(paired=TRUE),
+    #                       textsize = 4) +
+    theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5)) +
+    facet_wrap(~ country) +
+    scale_x_discrete("", labels=c(kmode="k-mode", mixdirdp="mixdir DP",mixdirdp100="mixdir DP\n(α₁=100)", mixdir="mixdir", lca="poLCA", rock="ROCK")) +
+    scale_y_continuous(limits=c(NA, 0.75), breaks=c(0, 0.25, 0.5, 0.75, 1)) +
+    ggtitle("Clustering Consistency (K=5)") 
+```
+
+
+Create the speed beeswarm plot for K=5
+
+```{r}
+p_dur_lat5 <- class_assignment  %>%
+  filter(method != "mixdirdp100") %>%
+  group_by(country, method, iter, round) %>%
+  summarize(duration=first(time)) %>%
+  ungroup() %>%
+  mutate(method= fct_reorder(as.factor(method), duration, median)) %>%
+  ggplot(aes(x=method, y=duration)) + 
+    ggbeeswarm::geom_quasirandom() +
+    stat_summary(fun.data = "mean_cl_boot", colour = "red", geom = "crossbar", size=0.4) +
+    theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5)) +
+    scale_x_discrete("", labels=c(kmode="k-mode", mixdirdp100="mixdir DP\n(α₁=100)", mixdirdp="mixdir DP", mixdir="mixdir", lca="poLCA", rock="ROCK")) +
+    scale_y_continuous(breaks=c(0.5, 1, 5, 10, 30, 60, 300, 600, 1800, 3600), minor_breaks = seq(1,10000, by=10),
+                       labels=c("500 ms.", "1 s", "5 s", "10 s", "30 s", "1 min", "5 min", "10 min", "30 min", "1 h")) +
+    facet_wrap(~ country) +
+    ggtitle("Clustering Duration (K=5)") +
+    coord_trans(y="log")
+```
+
+
+Create the clustering consistency beeswarm plot for K=25
+
+```{r}
+p_perf_lat25 <- class_assignment25 %>%
+  filter(method != "mixdirdp100") %>%
+  mutate(class = as.integer(as.factor(class))) %>%
+  group_by(country, method, iter) %>%
+  do({
+    tmp <- .
+    cross_df(list(a=unique(tmp$round), b=unique(tmp$round))) %>%
+      filter(a < b) %>%
+      rowwise() %>%
+      mutate(ARI= mcclust::arandi(tmp[tmp$round == a, ]$class,
+                                  tmp[tmp$round == b, ]$class))
+  }) %>%
+  ungroup() %>%
+  mutate(method= fct_reorder(as.factor(method), -ARI, median)) %>%
+  ggplot(aes(x=method, y=ARI)) + 
+    ggbeeswarm::geom_quasirandom() +
+    stat_summary(fun.data = "mean_cl_boot", colour = "red", geom = "crossbar", size=0.4) +
+    theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5)) +
+    facet_wrap(~ country) +
+    scale_x_discrete("", labels=c(kmode="k-mode", mixdirdp="mixdir DP",mixdirdp100="mixdir DP\n(α₁=100)", mixdir="mixdir", lca="poLCA", rock="ROCK")) +
+    scale_y_continuous(limits=c(NA, 0.75), breaks=c(0, 0.25, 0.5, 0.75, 1)) +
+    ggtitle("Clustering Consistency (K=25)") 
+```
+
+Create the speed beeswarm plot for K=5
+
+```{r}
+p_dur_lat25 <- class_assignment25  %>%
+  filter(method != "mixdirdp100") %>%
+  group_by(country, method, iter, round) %>%
+  summarize(duration=first(time)) %>%
+  ungroup() %>%
+  mutate(method= fct_reorder(as.factor(method), duration, median)) %>%
+  ggplot(aes(x=method, y=duration)) + 
+    ggbeeswarm::geom_quasirandom() +
+    stat_summary(fun.data = "mean_cl_boot", colour = "red", geom = "crossbar", size=0.4) +
+    theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5)) +
+    scale_x_discrete("", labels=c(kmode="k-mode", mixdirdp100="mixdir DP\n(α₁=100)", mixdirdp="mixdir DP", mixdir="mixdir", lca="poLCA", rock="ROCK")) +
+    scale_y_continuous(breaks=c(0.5, 1, 5, 10, 30, 60, 300, 600, 1800, 3600), minor_breaks = seq(1,10000, by=10),
+                       labels=c("500 ms.", "1 s", "5 s", "10 s", "30 s", "1 min", "5 min", "10 min", "30 min", "1 h")) +
+    facet_wrap(~ country) +
+    ggtitle("Clustering Duration (K=25)") +
+    coord_trans(y="log")
+```
+
+
+Create the combined figure
+
+```{r fig.height=10, fig.width=12}
+plot_grid(p_perf_lat5, p_perf_lat25, p_dur_lat5, p_dur_lat25, nrow=2, labels = c("A", "B", "C", "D"))
+
+ggsave("../output/young_survey_cluster_consistency_all4.png", width=12, height=10)
+```
+
+
+
+
+
+
+
+
+# Compare performance on Ethiopia dataset (Fig. 7)
+
+
+```{r fig.height=4.5, fig.width=7}
+p_eth_5 <- class_assignment %>%
+  filter(country == "Ethiopia") %>%
+  filter(method != "mixdirdp100") %>%
+  mutate(class = as.integer(as.factor(class))) %>%
+  group_by(method, iter) %>%
+  do({
+    tmp <- .
+    cross_df(list(a=unique(tmp$round), b=unique(tmp$round))) %>%
+      filter(a < b) %>%
+      rowwise() %>%
+      mutate(ARI= mcclust::arandi(tmp[tmp$round == a, ]$class,
+                                  tmp[tmp$round == b, ]$class))
+  }) %>%
+  ungroup() %>%
+  mutate(method= fct_reorder(as.factor(method), -ARI, median)) %>%
+  ggplot(aes(x=method, y=ARI)) + 
+    ggbeeswarm::geom_quasirandom() +
+    stat_summary(fun.data = "mean_cl_boot", colour = "red", geom = "crossbar", size=0.4) +
+    ggsignif::geom_signif(comparisons = list(c("lca", "mixdir"), c("mixdir", "mixdirdp"), c("mixdirdp", "kmode")),
+                        y_position=c(0.82, 0.74, 0.6), map_signif_level = TRUE, test.args=list(paired=FALSE),
+                        textsize = 4) +
+    theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5)) +
+    scale_x_discrete("", labels=c(kmode="k-mode", mixdirdp="mixdir DP",mixdirdp100="mixdir DP\n(α₁=100)", mixdir="mixdir", lca="poLCA", rock="ROCK")) +
+    scale_y_continuous(limits=c(NA, 0.9), breaks=c(0, 0.25, 0.5, 0.75, 1)) +
+    ggtitle("Clustering Consistency (K=5)") 
+
+p_eth_25 <- class_assignment25 %>%
+  filter(country == "Ethiopia") %>%
+  filter(method != "mixdirdp100") %>%
+  mutate(class = as.integer(as.factor(class))) %>%
+  group_by(method, iter) %>%
+  do({
+    tmp <- .
+    cross_df(list(a=unique(tmp$round), b=unique(tmp$round))) %>%
+      filter(a < b) %>%
+      rowwise() %>%
+      mutate(ARI= mcclust::arandi(tmp[tmp$round == a, ]$class,
+                                  tmp[tmp$round == b, ]$class))
+  }) %>%
+  ungroup() %>%
+  mutate(method= fct_reorder(as.factor(method), -ARI, median)) %>%
+  ggplot(aes(x=method, y=ARI)) + 
+    ggbeeswarm::geom_quasirandom() +
+    stat_summary(fun.data = "mean_cl_boot", colour = "red", geom = "crossbar", size=0.4) +
+    ggsignif::geom_signif(comparisons = list(c("lca", "kmode"), c("lca", "mixdir"), c("mixdir", "mixdirdp")),
+                          y_position = c(0.4, 0.5, 0.6), map_signif_level = TRUE, test.args=list(paired=FALSE),
+                          textsize = 4) +
+    ggsignif::geom_signif(comparisons = list(c("mixdirdp100", "mixdir")),
+                          y_position = 0.7, map_signif_level = TRUE, test.args=list(paired=FALSE),
+                          textsize = 4) +
+    theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5)) +
+    scale_x_discrete("", labels=c(kmode="k-mode", mixdirdp="mixdir DP",mixdirdp100="mixdir DP\n(α₁=100)", mixdir="mixdir", lca="poLCA", rock="ROCK")) +
+    scale_y_continuous(limits=c(NA, 0.9), breaks=c(0, 0.25, 0.5, 0.75, 1)) +
+    ggtitle("Clustering Consistency (K=25)") 
+
+plot_grid(p_eth_5, p_eth_25, labels=c("A", "B"))
+cowplot::ggsave("../output/cluster_consistency.png", width=7, height=4.5)
+```
+
+
+
+
+# Consistency Alluvial Plot (Fig. 6)
+
+
+
+```{r}
+res1234 <- read_rds("../data/young_lives_clustering_results/young_lives_res1234_resrep.RDS")
+res1 <- res1234[[1]]
+res2 <- res1234[[2]]
+res3 <- res1234[[3]]
+res4 <- res1234[[4]]
+res1_rep <- res1234[[5]]
+```
+
+
+
+```{r}
+
+{par(
+  fig=c(0, 0.5, 0.3, 1), # Set plot in upper half
+  oma=c(0, 4, 1, 2) # Increase margins left and right
+)
+
+map2_df(res1_rep, 1:5, ~ data.frame(class=.x$pred_class, repetition=.y, ind=1:length(.x$pred_class))) %>%
+  mutate(repetition=as.factor(paste0("Rep", repetition)),
+         class=as.character(class)) %>%
+  spread(repetition, class) %>%
+  group_by_at(vars(starts_with("Rep")))  %>%
+  summarize(freq=n()) %>%
+  ungroup() %>%
+  mutate(Rep1= case_when(
+    Rep1 == "4" ~ "1",
+    Rep1 == "1" ~ "3",
+    Rep1 == "3" ~ "5",
+    Rep1 == "5" ~ "2",
+    TRUE ~ Rep1
+  )) %>%
+  mutate(Rep2= case_when(
+    Rep2 == "2" ~ "5",
+    Rep2 == "3" ~ "3",
+    Rep2 == "4" ~ "2",
+    TRUE ~ Rep2
+  )) %>%
+  mutate(Rep3= case_when(
+    Rep3 == "5" ~ "1",
+    Rep3 == "1" ~ "3",
+    Rep3 == "3" ~ "5",
+    Rep3 == "2" ~ "4",
+    Rep3 == "4" ~ "2",
+    TRUE ~ Rep3
+  )) %>%
+  mutate(Rep4= case_when(
+    Rep4 == "1" ~ "1",
+    Rep4 == "4" ~ "5",
+    Rep4 == "5" ~ "4",
+    TRUE ~ Rep4
+  )) %>%
+  mutate(Rep5= case_when(
+    Rep5 == "3" ~ "1",
+    Rep5 == "1" ~ "3",
+    Rep5 == "2" ~ "5",
+    Rep5 == "5" ~ "2",
+    TRUE ~ Rep5
+  )) %>%
+  mutate(Rep1=LETTERS[6-as.numeric(Rep1)]) %>%
+  mutate(Rep2=LETTERS[6-as.numeric(Rep2)]) %>%
+  mutate(Rep3=LETTERS[6-as.numeric(Rep3)]) %>%
+  mutate(Rep4=LETTERS[6-as.numeric(Rep4)]) %>%
+  mutate(Rep5=LETTERS[6-as.numeric(Rep5)]) %>%
+  {alluvial::alluvial(.[, 1:5], freq=.$freq, hide=.$freq < 0, blocks=TRUE,
+                      gap.width = 0.2, alpha=0.8, axis_labels = rep("", 5))}
+
+
+par(
+  fig=c(0, 0.5, 0, 0.3), # Set plot to lower half of plot
+  oma=c(1, 0.4, 0, 0), # Decrease outer margins left and right
+  mar=c(3, 4.1, 1, 0), # Decrease top inner margin
+  new=TRUE # Add to existing plot (weird I know...)
+)
+plot(map_dbl(res1_rep, ~ tail(.x$convergence, n=1)), type="l", ylab="ELBO", xlab="", xaxt="n")
+points(map_dbl(res1_rep, ~ tail(.x$convergence, n=1)), pch=16)
+axis(1, at=1:5, labels=paste0("Rep", 1:5))
+
+
+par(
+  fig=c(0.53, 1, 0.3, 1), # Set plot to lower half of plot
+  oma=c(0, 4, 1, 1), # Increase margins left and right
+  # mar=c(3, 4.1, 1, 1.5), # Decrease top inner margin
+  new=TRUE # Add to existing plot (weird I know...)
+)
+rbind(data.frame(class=res1$pred_class,
+                 childid=seq_along(res1$pred_class),
+               round="1"),
+      data.frame(class=res2$pred_class,
+                 childid=seq_along(res2$pred_class),
+               round="2"),
+      data.frame(class=res3$pred_class,
+                 childid=seq_along(res3$pred_class),
+               round="3"),
+      data.frame(class=res4$pred_class,
+                 childid=seq_along(res4$pred_class),
+               round="4")) %>%
+  mutate(class=as.character(class),
+         round=as.factor(paste0("R", round))) %>%
+  spread(round, class) %>%
+  group_by_at(vars(starts_with("R"))) %>%
+  summarize(freq=n()) %>%
+  ungroup() %>%
+  mutate(R1= case_when(
+    R1 == "3" ~ "1",
+    R1 == "1" ~ "3",
+    TRUE ~ R1
+  )) %>%
+  mutate(R2=case_when(
+    R2 == "4" ~ "3",
+    R2 == "3" ~ "4",
+    TRUE ~ R2
+  )) %>%
+  mutate(R3=case_when(
+    R3 == "5" ~ "1",
+    R3 == "4" ~ "2",
+    R3 == "2" ~ "3",
+    R3 == "3" ~ "4",
+    TRUE ~ R3
+  )) %>%
+  mutate(R4=case_when(
+    R4 == "5" ~ "3",
+    R4 == "2" ~ "5",
+    R4 == "3" ~ "2",
+    TRUE ~ R4
+  )) %>%
+  mutate(R1=LETTERS[as.numeric(R1)]) %>%
+  mutate(R2=LETTERS[as.numeric(R2)]) %>%
+  mutate(R3=LETTERS[as.numeric(R3)]) %>%
+  mutate(R4=LETTERS[as.numeric(R4)]) %>%
+  {alluvial::alluvial(.[, 1:4], freq=.$freq, hide=.$freq < 0, blocks=TRUE,
+                      gap.width = 0.2, alpha=0.8, axis_labels = c(2002, 2006, 2009, 2013))}
+}
+dev.copy(png, "../output/young_survey_cluster_consistency_raw.png", width=4500, height=2100, res=300)
+dev.off()
+```
+
+
+
+
+
+
+
+
+
+# Create combined performance plot
+
+This part assumes that you ran the synthetic_data.RMD notebook before, so that the plots `p1` and `p2` are 
+available to create a merged performance plot
+
+```{r fig.height=4.5, fig.width=12}
+title_row <- plot_grid(ggdraw() + draw_text("Synthetic Data Performance", size=18), 
+                       ggdraw() + draw_text("Young Lives Consistency", size=18),
+                       nrow=1)
+plot_row <- plot_grid(p1 + ggtitle("K=4"), p2 + ggtitle("K=8"), 
+                      p_eth_5 + ggtitle("K=5"), p_eth_25 + ggtitle("K=25"),
+                      labels=c("A", "B", "C", "D"), nrow=1, align="h")
+plot_grid(title_row, plot_row, nrow=2, rel_heights=c(1,7))
+cowplot::ggsave("../output/cluster_performance_merged.png", width=12, height=4.5)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
