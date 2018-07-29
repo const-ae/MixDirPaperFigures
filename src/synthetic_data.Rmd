@@ -195,5 +195,61 @@ cowplot::ggsave("../output/performance_comparison_timing.png", p_comb, width=7, 
 ```
 
 
+```{r}
+run_mixdirdp_on_generated_data <- function(n_iter, n_latent){
+  set.seed(1)
+  lapply(1:n_iter, function(idx){
+    
+    tmp <- generate_categorical_dataset(n_ind=1000, n_quest=10, n_cat=rbinom(1, 30, 0.3), n_true_classes = 4, 
+                                        lambda_true=extraDistr::rdirichlet(1, rep(1,4)),
+                                        bb_size=100, bb_suc=0.2, bb_overdis=0.1)
+    X <- tmp$X
+    true_classes <- tmp$true_latent
+    
+    mixdirdp_result <- mixdir(X, n_latent=n_latent, select_latent = TRUE,
+                              alpha=c(1,1), beta = 0.1, verbose=TRUE, max_iter = 300)
+    
+    list(true_classes=true_classes, mixdirdp_result=mixdirdp_result)
+    
+  })
+}
+
+
+
+
+
+data2 <- run_mixdirdp_on_generated_data(n_latent=8, n_iter=25)
+
+
+
+
+
+
+data2 %>%
+  keep(~ .$mixdirdp_result$converged) %>%
+  map_dbl(~ mcclust::arandi(.$true_classes, .$mixdirdp_result$pred_class))
+  
+
+data2 %>%
+  keep(~ .$mixdirdp_result$converged) %>%
+  {left_join(imap_dfr(., ~ enframe(table(.x$mixdirdp_result$pred_class)) %>% 
+                        mutate(idx=.y, 
+                               ARI=mcclust::arandi(.x$true_classes, .x$mixdirdp_result$pred_class))),
+             imap_dfr(., ~ enframe(table(.x$true_classes)) %>% mutate(idx=.y)),
+             by=c("idx", "name")
+            )} %>%
+  filter(ARI > 0.5) %>%
+  mutate(value.y=ifelse(is.na(value.y), 0, value.y)) %>%
+  group_by(idx) %>%
+  mutate(value.y=sort(value.y, decreasing = TRUE)) %>%
+  gather(origin, value, c(value.x, value.y)) %>%
+  mutate(origin=if_else(origin == "value.x", "Inferred", "Original")) %>%
+  ungroup() %>%
+  mutate(label=forcats::fct_reorder(as.factor(paste0("ARI: ", formatC(ARI, digits=3))), -ARI)) %>%
+  ggplot(aes(x=name, y=value, fill=origin)) +
+    geom_bar(stat="identity", position = "dodge") +
+    facet_wrap(~ label)
+
+```
 
 
